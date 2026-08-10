@@ -12,6 +12,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Backend Groq API Key
+
 
 def get_api_key():
     try:
@@ -83,7 +85,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Clean Header Section
+# Header Section
 if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
@@ -103,7 +105,7 @@ with st.sidebar:
     st.caption("• **NRND (🟡):** Not Recommended for New Designs.")
     st.caption("• **Obsolete/EOL (🔴):** Immediate substitute required.")
 
-# 3. Batch Analysis Engine via Groq
+# 3. Batch Analysis Engine via Groq (With Package Guardrails)
 def analyze_entire_bom_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
@@ -114,26 +116,31 @@ def analyze_entire_bom_with_groq(bom_data_str, api_key):
 
         {bom_data_str}
 
+        CRITICAL SOURCING RULES FOR SUBSTITUTES:
+        1. PHYSICAL PACKAGE & FOOTPRINT MATCHING: When recommending a substitute, you MUST match the exact physical package footprint (e.g., SOT-223 must match SOT-223, SOIC-8 must match SOIC-8, TO-220 must match TO-220, DIP-8 must match DIP-8).
+        2. NEVER substitute an SOT-223 component with an SOT-23 or SOT-23-5 component. SOT-23-5 is physically much smaller, has different pin layouts, and lower thermal dissipation capabilities.
+        3. Drop-in compatibility requires matching: Voltage Rating, Current Limits, Pinout Mapping, and Physical Footprint.
+
         Task:
         For EACH component listed in the BOM:
         1. Determine or confirm the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
         2. If **Active**, confirm it is production-ready.
         3. If **NRND** or **Obsolete/EOL**:
-           - Provide an exact Manufacturer Part Number (MPN) for an active drop-in or functional substitute.
+           - Provide an exact Manufacturer Part Number (MPN) for an active drop-in substitute in the SAME physical package.
            - State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
-           - Summarize key technical differences in 1-2 bullet points (voltage, footprint, current rating).
+           - Summarize key technical differences (current rating, dropout voltage, thermal dissipation).
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "STM32F103C8T6",
-            "manufacturer": "STMicroelectronics",
+            "mpn": "AMS1117-3.3",
+            "manufacturer": "Advanced Monolithic Systems",
             "status": "NRND",
-            "substitute": "STM32G071CBT6",
-            "substitute_mfr": "STMicroelectronics",
-            "pin_compatible": "No (PCB Redesign Required)",
-            "key_differences": "Lower power, ARM Cortex-M0+ core, updated pinouts.",
-            "analysis": "Part is flagged as Not Recommended for New Designs by STMicroelectronics. Transitioning to STM32G0 series is recommended."
+            "substitute": "NCP1117ST33T3G",
+            "substitute_mfr": "onsemi",
+            "pin_compatible": "Yes (Direct SOT-223 Drop-in)",
+            "key_differences": "Identical SOT-223 package, 1A output current capability, 3.3V fixed LDO.",
+            "analysis": "AMS1117-3.3 in SOT-223 is NRND. Direct pin-to-pin and footprint drop-in alternatives in SOT-223 include NCP1117ST33T3G (onsemi) or AP1117E33L-13 (Diodes Inc)."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -240,7 +247,6 @@ if uploaded_file:
                 with st.expander(f"{badge}  |  Part Number: {mpn}"):
                     c_left, c_right = st.columns(2)
                     
-                    # Left Side: Current Component
                     with c_left:
                         left_box = (
                             '<div class="comp-box-original">'
@@ -252,7 +258,6 @@ if uploaded_file:
                         )
                         st.markdown(left_box, unsafe_allow_html=True)
 
-                    # Right Side: TraceGuard Recommended Substitute
                     with c_right:
                         right_box = (
                             '<div class="comp-box-recommended">'
