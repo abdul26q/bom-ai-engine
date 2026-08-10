@@ -89,7 +89,7 @@ if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
 st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automated Component Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Automated Component Lifecycle Risk Auditing & Multi-Distributor Cross-Referencing</div>', unsafe_allow_html=True)
 
 # 2. Sidebar Layout
 with st.sidebar:
@@ -100,7 +100,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### 📋 Navigation Guide")
-    st.caption("• **Instant Lookup:** Search a single part number for immediate status and replacements.")
+    st.caption("• **Instant Lookup:** Search a single part number for immediate status and multi-source alternatives.")
     st.caption("• **BOM Audit:** Upload a full CSV for batch risk scoring and exportable reports.")
 
 # 3. Groq Core Engine
@@ -114,31 +114,41 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         {bom_data_str}
 
-        CRITICAL SOURCING RULES FOR SUBSTITUTES:
-        1. PHYSICAL PACKAGE & FOOTPRINT MATCHING: When recommending a substitute, you MUST match the exact physical package footprint (e.g., SOT-223 must match SOT-223, SOIC-8 must match SOIC-8, TO-220 must match TO-220, DIP-8 must match DIP-8).
-        2. NEVER substitute an SOT-223 component with an SOT-23 or SOT-23-5 component. SOT-23-5 is physically much smaller, has different pin layouts, and lower thermal dissipation capabilities.
-        3. Drop-in compatibility requires matching: Voltage Rating, Current Limits, Pinout Mapping, and Physical Footprint.
+        CRITICAL SOURCING & CROSS-REFERENCING RULES:
+        1. MANDATORY ALTERNATIVES FOR ALL PARTS:
+           - Even if a part is **Active** (e.g., NE555P, NE555N, 2N7002, 1N4148), you MUST still provide an active second-source or cross-reference alternative part number (e.g., SA555P, LM555CN, or ICM7555 for NE555) to support multi-sourcing supply chain resilience.
+           - NEVER return "N/A" or "None needed" for substitutes. Always suggest a valid functional equivalent or second-source MPN.
+        2. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
+           - You MUST match the exact physical package footprint (e.g., SOT-223 must match SOT-223, DIP-8 must match DIP-8, SOIC-8 must match SOIC-8).
+           - NEVER substitute an SOT-223 component with an SOT-23 or SOT-23-5 component.
+        3. MULTI-SOURCE DISTRIBUTOR URLS:
+           - Generate accurate search URLs for global electronics distributors (DigiKey, Mouser, Octopart, Farnell/Element14) specifically querying the substitute MPN (or original MPN if no substitute exists).
 
         Task:
         For EACH component listed:
         1. Determine or confirm the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
-        2. If **Active**, confirm it is production-ready.
-        3. If **NRND** or **Obsolete/EOL**:
-           - Provide an exact Manufacturer Part Number (MPN) for an active drop-in substitute in the SAME physical package.
-           - State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
-           - Summarize key technical differences (current rating, dropout voltage, thermal dissipation).
+        2. Provide an exact Manufacturer Part Number (MPN) for a second-source functional or drop-in substitute in the SAME physical package.
+        3. State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
+        4. Summarize key technical differences or confirm identical pin-to-pin functional equivalence.
+        5. Generate direct distributor search URLs for the part.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "AMS1117-3.3",
-            "manufacturer": "Advanced Monolithic Systems",
-            "status": "NRND",
-            "substitute": "NCP1117ST33T3G",
-            "substitute_mfr": "onsemi",
-            "pin_compatible": "Yes (Direct SOT-223 Drop-in)",
-            "key_differences": "Identical SOT-223 package, 1A output current capability, 3.3V fixed LDO.",
-            "analysis": "AMS1117-3.3 in SOT-223 is NRND. Direct pin-to-pin and footprint drop-in alternatives in SOT-223 include NCP1117ST33T3G (onsemi) or AP1117E33L-13 (Diodes Inc)."
+            "mpn": "NE555P",
+            "manufacturer": "Texas Instruments",
+            "status": "Active",
+            "substitute": "LM555CN / SA555P",
+            "substitute_mfr": "onsemi / STMicroelectronics",
+            "pin_compatible": "Yes (Direct DIP-8 Drop-in)",
+            "key_differences": "Direct pin-to-pin functional equivalent timer IC in DIP-8 package.",
+            "supplier_links": {{
+              "digikey": "https://www.digikey.com/en/products/result?keywords=LM555CN",
+              "mouser": "https://www.mouser.com/c/?q=LM555CN",
+              "octopart": "https://octopart.com/search?q=LM555CN",
+              "element14": "https://in.element14.com/search?st=LM555CN"
+            }},
+            "analysis": "Part is Active. Alternative second-source options like LM555CN (onsemi) or SA555P (TI/ST) provide multi-sourcing flexibility."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -165,7 +175,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# Helper function to render a result card
+# Helper function to render a result card with AI-generated Supplier Links
 def render_component_card(item):
     status = str(item.get("status", "Active"))
     mpn = str(item.get("mpn", "Unknown"))
@@ -175,6 +185,7 @@ def render_component_card(item):
     pin_compat = str(item.get("pin_compatible", "N/A"))
     diffs = str(item.get("key_differences", "None noted."))
     analysis = str(item.get("analysis", "No analysis provided."))
+    links = item.get("supplier_links", {})
 
     status_upper = status.upper()
     if "OBSOLETE" in status_upper or "EOL" in status_upper:
@@ -184,7 +195,11 @@ def render_component_card(item):
     else:
         badge = "🟢 ACTIVE"
 
-    search_url = f"[https://www.mouser.com/c/?q=](https://www.mouser.com/c/?q=){substitute if substitute != 'N/A' else mpn}"
+    # Extract supplier URLs directly generated by AI
+    digikey_url = links.get("digikey", f"https://www.digikey.com/en/products/result?keywords={mpn}")
+    mouser_url = links.get("mouser", f"https://www.mouser.com/c/?q={mpn}")
+    octopart_url = links.get("octopart", f"https://octopart.com/search?q={mpn}")
+    element14_url = links.get("element14", f"https://in.element14.com/search?st={mpn}")
 
     with st.expander(f"{badge}  |  Part Number: {mpn}", expanded=True):
         c_left, c_right = st.columns(2)
@@ -203,7 +218,7 @@ def render_component_card(item):
         with c_right:
             right_box = (
                 '<div class="comp-box-recommended">'
-                '<div class="box-title title-rec">TraceGuard Recommended Substitute</div>'
+                '<div class="box-title title-rec">TraceGuard Recommended Alternative</div>'
                 f'<div class="part-mpn">{substitute}</div>'
                 f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>'
                 f'<p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>'
@@ -212,12 +227,14 @@ def render_component_card(item):
             st.markdown(right_box, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("**Key Specification Differences:**")
+        st.markdown("**Key Specification & Functional Differences:**")
         st.info(diffs)
         
-        st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
+        st.markdown("**Engineering Sourcing Analysis:**")
         st.write(analysis)
-        st.markdown(f"[🔗 Verify Specs on Mouser Catalog]({search_url})")
+        
+        st.markdown("**AI-Generated Distributor Verification Links:**")
+        st.markdown(f"[📦 DigiKey]({digikey_url}) &nbsp;|&nbsp; [🏬 Mouser Electronics]({mouser_url}) &nbsp;|&nbsp; [🔍 Octopart Aggregator]({octopart_url}) &nbsp;|&nbsp; [🌐 Element14 / Farnell]({element14_url})")
 
 # 4. Tabbed Interface Setup
 tab1, tab2 = st.tabs(["🔍 Instant Part Search", "📁 Batch BOM Upload Audit"])
@@ -225,17 +242,17 @@ tab1, tab2 = st.tabs(["🔍 Instant Part Search", "📁 Batch BOM Upload Audit"]
 # --- TAB 1: INSTANT COMPONENT SEARCH ---
 with tab1:
     st.subheader("Search Component Lifecycle & Substitutes")
-    st.caption("Type any Manufacturer Part Number (MPN) to perform an instant risk lookup.")
+    st.caption("Type any Manufacturer Part Number (MPN) to perform an instant risk and cross-reference lookup.")
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. AMS1117-3.3, STM32F103C8T6, LM7805", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. NE555N, AMS1117-3.3, STM32F103C8T6, LM7805", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
     if btn_search and search_mpn.strip():
         active_key = get_api_key()
-        with st.spinner(f"🤖 Searching lifecycle and substitutes for {search_mpn.strip()}..."):
+        with st.spinner(f"🤖 Searching lifecycle and cross-references for {search_mpn.strip()}..."):
             query_str = f"MPN: {search_mpn.strip()} | Single Part Search Query"
             search_results = analyze_components_with_groq(query_str, active_key)
             
