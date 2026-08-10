@@ -13,6 +13,7 @@ st.set_page_config(
 )
 
 
+
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -330,4 +331,20 @@ with tab2:
                         "Original MPN": str(item.get("mpn", "")),
                         "Current Status": str(item.get("status", "")),
                         "Recommended Substitute": str(item.get("substitute", "")),
-                        "Pin Compatible": str(item
+                        "Pin Compatible": str(item.get("pin_compatible", "")),
+                        "Key Differences": str(item.get("key_differences", "")),
+                        "Engineering Analysis": str(item.get("analysis", ""))
+                    })
+
+                # CSV Download Section
+                st.markdown("---")
+                export_df = pd.DataFrame(export_rows)
+                csv_data = export_df.to_csv(index=False).encode('utf-8')
+
+                st.download_button(
+                    label="📥 Export Audited Risk Report (CSV)",
+                    data=csv_data,
+                    file_name="TraceGuard_BOM_Risk_Report.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
