@@ -2,15 +2,15 @@ import streamlit as st
 import pandas as pd
 from groq import Groq
 import json
+import os
 
 # 1. Modern Page Setup & Custom Styling
 st.set_page_config(
-    page_title="BOM Sentinel | AI Obsolescence & Risk Engine", 
+    page_title="TraceGuard AI | Component Risk Engine", 
     layout="wide",
     page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
-
 
 
 def get_api_key():
@@ -38,7 +38,7 @@ st.markdown("""
     .main-header {
         font-size: 2.4rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #6366F1 0%, #06B6D4 100%);
+        background: linear-gradient(90deg, #E11D48 0%, #F97316 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.2rem;
@@ -49,45 +49,64 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* Result Cards Styling */
-    .result-card {
-        background-color: #0F172A;
+    /* Comparison Boxes */
+    .comp-box-original {
+        background-color: #1E1B4B;
+        padding: 16px;
         border-radius: 10px;
-        padding: 18px;
-        margin-top: 10px;
-        border: 1px solid #1E293B;
+        border-left: 5px solid #6366F1;
+        margin-bottom: 10px;
     }
-    .spec-label {
+    .comp-box-recommended {
+        background-color: #064E3B;
+        padding: 16px;
+        border-radius: 10px;
+        border-left: 5px solid #10B981;
+        margin-bottom: 10px;
+    }
+    .box-title {
         font-size: 0.85rem;
-        color: #94A3B8;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        margin-bottom: 8px;
     }
-    .spec-value {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #F8FAFC;
-        margin-bottom: 12px;
+    .title-orig { color: #A5B4FC; }
+    .title-rec { color: #6EE7B7; }
+    
+    .part-mpn {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #FFFFFF;
+        margin-bottom: 4px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Main Title Section
-st.markdown('<div class="main-header">🛡️ BOM Sentinel AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automated Component Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
+# Main Title & Header Section with TraceGuard Logo
+col_logo, col_title = st.columns([1, 6])
+with col_logo:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=110)
+    else:
+        st.image("https://img.icons8.com/isometric/100/circuit.png", width=80)
+
+with col_title:
+    st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Automated BOM Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
 
 # 2. Sidebar Layout
 with st.sidebar:
-    st.image("https://img.icons8.com/isometric/100/circuit.png", width=70)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=150)
     st.title("System Status")
-    st.success("⚡ Groq Engine: Online & Connected")
+    st.success("⚡ TraceGuard Core: Online")
     
     st.markdown("---")
     st.markdown("### 📋 Executive Summary Guide")
     st.caption("• **Active (🟢):** Safe for full mass production.")
-    st.caption("• **NRND (🟡):** Not Recommended for New Designs. Sourcing risk expected.")
-    st.caption("• **Obsolete/EOL (🔴):** Out of production. Immediate substitute required.")
+    st.caption("• **NRND (🟡):** Not Recommended for New Designs.")
+    st.caption("• **Obsolete/EOL (🔴):** Immediate substitute required.")
 
 # 3. Batch Analysis Engine via Groq
 def analyze_entire_bom_with_groq(bom_data_str, api_key):
@@ -113,11 +132,13 @@ def analyze_entire_bom_with_groq(bom_data_str, api_key):
         [
           {{
             "mpn": "STM32F103C8T6",
+            "manufacturer": "STMicroelectronics",
             "status": "NRND",
             "substitute": "STM32G071CBT6",
+            "substitute_mfr": "STMicroelectronics",
             "pin_compatible": "No (PCB Redesign Required)",
-            "key_differences": "Lower power consumption, updated ARM Cortex-M0+ core, different pin mapping.",
-            "analysis": "Part is flagged as Not Recommended for New Designs by STMicroelectronics. Transitioning to STM32G0 series is recommended for long-term production."
+            "key_differences": "Lower power, ARM Cortex-M0+ core, updated pinouts.",
+            "analysis": "Part is flagged as Not Recommended for New Designs by STMicroelectronics. Transitioning to STM32G0 series is recommended."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -131,7 +152,6 @@ def analyze_entire_bom_with_groq(bom_data_str, api_key):
         
         text = response.choices[0].message.content.strip()
         
-        # Clean formatting wrappers if present
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -156,12 +176,12 @@ if uploaded_file:
 
     col_btn, _ = st.columns([1, 3])
     with col_btn:
-        run_audit = st.button("🚀 Run AI Lifecycle Audit", type="primary", use_container_width=True)
+        run_audit = st.button("🚀 Run TraceGuard Risk Audit", type="primary", use_container_width=True)
 
     if run_audit:
         active_key = get_api_key()
 
-        with st.spinner("🤖 Analyzing component lifecycles & cross-referencing drop-in substitutes..."):
+        with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
             bom_summary = []
             for _, row in bom_df.iterrows():
                 mpn = str(
@@ -191,20 +211,22 @@ if uploaded_file:
             st.subheader("📊 Executive Risk Overview")
             
             m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Components", total_parts)
+            m1.metric("Total Line Items", total_parts)
             m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
-            m3.metric("At-Risk Line Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
+            m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
             m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
 
             st.markdown("---")
-            st.subheader("🔍 Component Breakdown & Substitute Recommendations")
+            st.subheader("🔍 Component Comparison & Substitute Matrix")
 
             export_rows = []
 
             for item in results:
                 status = str(item.get("status", "Active"))
                 mpn = str(item.get("mpn", "Unknown"))
+                mfr = str(item.get("manufacturer", "N/A"))
                 substitute = str(item.get("substitute", "N/A"))
+                sub_mfr = str(item.get("substitute_mfr", "N/A"))
                 pin_compat = str(item.get("pin_compatible", "N/A"))
                 diffs = str(item.get("key_differences", "None noted."))
                 analysis = str(item.get("analysis", "No analysis provided."))
@@ -217,34 +239,45 @@ if uploaded_file:
                 else:
                     badge = "🟢 ACTIVE"
 
-                search_url = f"https://www.mouser.com/c/?q={mpn}"
+                search_url = f"https://www.mouser.com/c/?q={substitute if substitute != 'N/A' else mpn}"
 
-                # Expander Card for each component
+                # Expander Card with Side-by-Side Comparison
                 with st.expander(f"{badge}  |  Part Number: {mpn}"):
-                    c1, c2, c3 = st.columns([1.2, 1.2, 1.6])
+                    c_left, c_right = st.columns(2)
                     
-                    with c1:
-                        st.markdown('<div class="spec-label">Suggested Substitute</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="spec-value"><code>{substitute}</code></div>', unsafe_allow_html=True)
-                        
-                        st.markdown('<div class="spec-label">Sourcing Verification</div>', unsafe_allow_html=True)
-                        st.markdown(f'[🔗 Verify Part on Mouser Catalog]({search_url})')
+                    # Left Side: Current Component
+                    with c_left:
+                        st.markdown(f"""
+                        <div class="comp-box-original">
+                            <div class="box-title title-orig">Current BOM Component</div>
+                            <div class="part-mpn">{mpn}</div>
+                            <p style="margin-bottom: 4px;"><b>Manufacturer:</b> {mfr}</p>
+                            <p style="margin-bottom: 0px;"><b>Status:</b> {status}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                    with c2:
-                        st.markdown('<div class="spec-label">Pinout Compatibility</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="spec-value">{pin_compat}</div>', unsafe_allow_html=True)
-
-                    with c3:
-                        st.markdown('<div class="spec-label">Key Spec Differences</div>', unsafe_allow_html=True)
-                        st.markdown(f'<div class="spec-value" style="font-size:0.95rem; font-weight:500;">{diffs}</div>', unsafe_allow_html=True)
+                    # Right Side: TraceGuard Recommended Substitute
+                    with c_right:
+                        st.markdown(f"""
+                        <div class="comp-box-recommended">
+                            <div class="box-title title-rec">TraceGuard Recommended Substitute</div>
+                            <div class="part-mpn">{substitute}</div>
+                            <p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>
+                            <p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                     st.markdown("---")
-                    st.markdown('<div class="spec-label">Engineering Risk Analysis</div>', unsafe_allow_html=True)
+                    st.markdown("**Key Specification Differences:**")
+                    st.info(diffs)
+                    
+                    st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
                     st.write(analysis)
+                    st.markdown(f"[🔗 Verify Substitute Specs on Mouser Catalog]({search_url})")
 
                 export_rows.append({
-                    "MPN": mpn,
-                    "Lifecycle Status": status,
+                    "Original MPN": mpn,
+                    "Current Status": status,
                     "Recommended Substitute": substitute,
                     "Pin Compatible": pin_compat,
                     "Key Differences": diffs,
@@ -259,7 +292,7 @@ if uploaded_file:
             st.download_button(
                 label="📥 Export Audited Risk Report (CSV)",
                 data=csv_data,
-                file_name="BOM_Sentinel_Risk_Report.csv",
+                file_name="TraceGuard_BOM_Risk_Report.csv",
                 mime="text/csv",
                 type="primary"
             )
