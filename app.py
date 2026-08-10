@@ -4,7 +4,7 @@ from groq import Groq
 import json
 import os
 
-# 1. Page Setup & Custom Theme Styling
+# 1. Page Setup & Custom Styling
 st.set_page_config(
     page_title="TraceGuard AI | Component Risk Engine", 
     layout="wide",
@@ -20,10 +20,9 @@ def get_api_key():
     except Exception:
         return BACKEND_GROQ_KEY
 
-# Custom CSS for UI polish
+# Custom CSS
 st.markdown("""
 <style>
-    /* Metric Card Styling */
     [data-testid="stMetricValue"] {
         font-size: 30px !important;
         font-weight: 800 !important;
@@ -34,8 +33,6 @@ st.markdown("""
         border-radius: 12px;
         border: 1px solid #334155;
     }
-    
-    /* Headers & Typography */
     .main-header {
         font-size: 2.6rem;
         font-weight: 800;
@@ -49,8 +46,6 @@ st.markdown("""
         color: #94A3B8;
         margin-bottom: 1.5rem;
     }
-    
-    /* Comparison Card Boxes */
     .comp-box-original {
         background-color: #1E1B4B;
         padding: 16px;
@@ -74,7 +69,6 @@ st.markdown("""
     }
     .title-orig { color: #A5B4FC; }
     .title-rec { color: #6EE7B7; }
-    
     .part-mpn {
         font-size: 1.25rem;
         font-weight: 800;
@@ -110,54 +104,53 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         prompt = f"""
         You are an elite Semiconductor Sourcing Engineer and PCN (Product Change Notification) Database Audit Specialist.
-        Analyze the following list of electronic components with extreme precision:
+        Analyze the following list of electronic components with absolute precision:
 
         {bom_data_str}
 
-        CRITICAL LIFECYCLE & SUFFIX AUDIT RULES (STRICT ACCURACY):
-        1. SUFFIX & PACKAGE SPECIFICITY (DO NOT DEFAULT TO BASE FAMILY):
-           - Inspect FULL MPN suffixes character-by-character (package type, speed grade, military specs, temp range).
-           - Ceramic DIP suffixes (e.g. 'J' or 'CJ' in LM741J, LM358J, CD4001BJ) are OBSOLETE / DISCONTINUED by Texas Instruments/Intersil. Do NOT mark as Active just because plastic versions (LM741CN) exist.
-           - Metal Can packages (TO-99 / 'H' suffix) and Mil-Spec (/883) parts are mostly OBSOLETE/EOL.
-           - Legacy speed grades in SRAM/DRAM (e.g., CY7C1354C-166AXC, 166MHz speed grades discontinued by Cypress/Infineon in favor of 200MHz/250MHz or newer memory ICs) are EOL/OBSOLETE.
-           - Legacy FPGAs/SoCs (e.g. EP4SGX230, MCIMX6Q6) are NRND or EOL.
+        CRITICAL LIFECYCLE & SUFFIX AUDIT RULES:
 
-        2. MANDATORY ALTERNATIVES FOR ALL PARTS:
-           - Even if a part is **Active** (e.g., GRM188R71H104KA93D, RC0603FR-0710KL), provide an active second-source cross-reference MPN for supply chain resilience.
-           - NEVER return "N/A" for substitutes. Always suggest a valid functional equivalent or second-source MPN.
+        1. LEADED vs. ROHS COMPLIANCE SUFFIXES (STRICT OBSOLESCENCE):
+           - Maxim/Analog Devices: Parts lacking '+' (e.g. MAX232CPE, MAX232EWE) are non-RoHS leaded packages and are OBSOLETE. Suggest the '+' suffix version (e.g. MAX232CPE+) as the active substitute.
+           - onsemi / Motorola: SOIC/DIP parts lacking 'G' suffix (e.g. MC14069UBD, MC14011BD) are non-RoHS leaded variants and are OBSOLETE. Suggest the 'G' suffix version (e.g. MC14069UBDG) as the active substitute.
 
-        3. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
-           - Match exact physical footprints (SOT-223 to SOT-223, DIP-8 to DIP-8, TQFP-100 to TQFP-100, CDIP to plastic DIP with explicit warning).
-           - NEVER substitute an SOT-223 component with SOT-23 or SOT-23-5.
+        2. LEGACY PACKAGE & ARCHITECTURE PHASING (NRND / EOL):
+           - Microchip/Atmel DIP-28 packages (e.g. ATMEGA328-PU, ATMEGA328P-PU, ATMEGA168-20PU) are NRND/EOL. Suggest surface-mount variants (e.g. ATMEGA328P-AU in TQFP-32) or ATmega328PB.
+           - STMicroelectronics STM32F103 series (e.g. STM32F103C8T6) is NRND (Not Recommended for New Designs). Suggest STM32G071CBT6 or STM32F4 series as modern active alternatives.
+           - Ceramic DIP suffixes ('J', 'CJ', e.g. LM741J) and Metal Cans ('H') are OBSOLETE.
 
-        4. MULTI-DISTRIBUTOR SEARCH LINKS:
-           - Generate direct search URLs querying the recommended substitute MPN (or original MPN if active).
+        3. MAINSTREAM FPGA & SOC ACTIVE PARTS (DO NOT FALSE-FLAG):
+           - Xilinx Kintex-7 FPGAs (e.g. XC7K325T-2FFG90C, XC7K160T) are ACTIVE mainstream production parts. Do NOT mark Kintex-7 or Artix-7 as NRND.
+           - Active ICs (e.g. BQ24072RGTR, RC0603FR-0710KL, GRM188R71H104KA93D) must remain marked ACTIVE, but still provide second-source alternatives for supply chain resilience.
+
+        4. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
+           - Always match exact physical package footprints (SOIC-8 to SOIC-8, DIP-8 to DIP-8, TQFP-48 to TQFP-48). Never substitute SOT-223 with SOT-23.
 
         Task:
         For EACH component listed:
         1. Accurately state current industry lifecycle status (Active, NRND, or Obsolete/EOL).
         2. Provide exact MPN for an active drop-in or functional substitute.
         3. State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
-        4. Summarize key technical differences (package material, temperature range, speed grade, voltage).
+        4. Summarize key technical differences (RoHS compliance, package material, core architecture).
         5. Generate direct distributor search URLs.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "LM741J",
-            "manufacturer": "Texas Instruments",
+            "mpn": "MAX232CPE",
+            "manufacturer": "Maxim Integrated / Analog Devices",
             "status": "Obsolete",
-            "substitute": "LM741CN / UA741CP",
-            "substitute_mfr": "Texas Instruments / STMicroelectronics",
-            "pin_compatible": "No (Commercial Plastic DIP-8 vs Ceramic CDIP-8)",
-            "key_differences": "Plastic DIP package (0°C to 70°C) replacing discontinued military ceramic CDIP 'J' package (-55°C to 125°C).",
+            "substitute": "MAX232CPE+",
+            "substitute_mfr": "Analog Devices",
+            "pin_compatible": "Yes (Direct PDIP-16 Drop-in)",
+            "key_differences": "MAX232CPE+ is the active lead-free (RoHS compliant) direct drop-in replacement for discontinued non-RoHS MAX232CPE.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=LM741CN",
-              "mouser": "https://www.mouser.com/c/?q=LM741CN",
-              "octopart": "https://octopart.com/search?q=LM741CN",
-              "element14": "https://in.element14.com/search?st=LM741CN"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=MAX232CPE%2B",
+              "mouser": "https://www.mouser.com/c/?q=MAX232CPE%2B",
+              "octopart": "https://octopart.com/search?q=MAX232CPE%2B",
+              "element14": "https://in.element14.com/search?st=MAX232CPE%2B"
             }},
-            "analysis": "LM741J (Ceramic 'J' package) was discontinued by Texas Instruments. Commercial plastic alternatives like LM741CN are active but operate at commercial temp ranges."
+            "analysis": "MAX232CPE is obsolete as non-RoHS leaded packages were phased out. The RoHS-compliant MAX232CPE+ is active and pin-to-pin compatible."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -166,7 +159,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0  # Zero temperature for deterministic accuracy
+            temperature=0.0
         )
         
         text = response.choices[0].message.content.strip()
@@ -254,7 +247,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. CY7C1354C-166AXC, LM741J, NE555N, AMS1117-3.3", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MAX232CPE, STM32F103C8T6, ATMEGA328-PU, XC7K325T-2FFG90C", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
