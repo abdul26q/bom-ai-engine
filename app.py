@@ -96,59 +96,68 @@ with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", width=140)
     st.title("System Status")
-    st.success("⚡ TraceGuard Core: Online")
+    st.success("⚡ TraceGuard Core: High Precision Mode")
     
     st.markdown("---")
     st.markdown("### 📋 Navigation Guide")
     st.caption("• **Instant Lookup:** Search a single part number for immediate status and multi-source alternatives.")
     st.caption("• **BOM Audit:** Upload a full CSV for batch risk scoring and exportable reports.")
 
-# 3. Groq Core Engine
+# 3. High-Precision Groq Core Engine
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
 
         prompt = f"""
-        You are an expert Electronics Hardware, Component Sourcing, and Supply Chain Engineer.
-        Analyze the following list of electronic components:
+        You are an elite Semiconductor Sourcing Engineer and PCN (Product Change Notification) Database Audit Specialist.
+        Analyze the following list of electronic components with extreme precision:
 
         {bom_data_str}
 
-        CRITICAL SOURCING & CROSS-REFERENCING RULES:
-        1. MANDATORY ALTERNATIVES FOR ALL PARTS:
-           - Even if a part is **Active** (e.g., NE555P, NE555N, 2N7002, 1N4148), you MUST still provide an active second-source or cross-reference alternative part number (e.g., SA555P, LM555CN, or ICM7555 for NE555) to support multi-sourcing supply chain resilience.
-           - NEVER return "N/A" or "None needed" for substitutes. Always suggest a valid functional equivalent or second-source MPN.
-        2. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
-           - You MUST match the exact physical package footprint (e.g., SOT-223 must match SOT-223, DIP-8 must match DIP-8, SOIC-8 must match SOIC-8).
-           - NEVER substitute an SOT-223 component with an SOT-23 or SOT-23-5 component.
-        3. MULTI-SOURCE DISTRIBUTOR URLS:
-           - Generate accurate search URLs for global electronics distributors (DigiKey, Mouser, Octopart, Farnell/Element14) specifically querying the substitute MPN (or original MPN if no substitute exists).
+        CRITICAL LIFECYCLE & SUFFIX AUDIT RULES (STRICT ACCURACY):
+        1. SUFFIX & PACKAGE SPECIFICITY (DO NOT DEFAULT TO BASE FAMILY):
+           - Inspect FULL MPN suffixes character-by-character (package type, speed grade, military specs, temp range).
+           - Ceramic DIP suffixes (e.g. 'J' or 'CJ' in LM741J, LM358J, CD4001BJ) are OBSOLETE / DISCONTINUED by Texas Instruments/Intersil. Do NOT mark as Active just because plastic versions (LM741CN) exist.
+           - Metal Can packages (TO-99 / 'H' suffix) and Mil-Spec (/883) parts are mostly OBSOLETE/EOL.
+           - Legacy speed grades in SRAM/DRAM (e.g., CY7C1354C-166AXC, 166MHz speed grades discontinued by Cypress/Infineon in favor of 200MHz/250MHz or newer memory ICs) are EOL/OBSOLETE.
+           - Legacy FPGAs/SoCs (e.g. EP4SGX230, MCIMX6Q6) are NRND or EOL.
+
+        2. MANDATORY ALTERNATIVES FOR ALL PARTS:
+           - Even if a part is **Active** (e.g., GRM188R71H104KA93D, RC0603FR-0710KL), provide an active second-source cross-reference MPN for supply chain resilience.
+           - NEVER return "N/A" for substitutes. Always suggest a valid functional equivalent or second-source MPN.
+
+        3. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
+           - Match exact physical footprints (SOT-223 to SOT-223, DIP-8 to DIP-8, TQFP-100 to TQFP-100, CDIP to plastic DIP with explicit warning).
+           - NEVER substitute an SOT-223 component with SOT-23 or SOT-23-5.
+
+        4. MULTI-DISTRIBUTOR SEARCH LINKS:
+           - Generate direct search URLs querying the recommended substitute MPN (or original MPN if active).
 
         Task:
         For EACH component listed:
-        1. Determine or confirm the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
-        2. Provide an exact Manufacturer Part Number (MPN) for a second-source functional or drop-in substitute in the SAME physical package.
+        1. Accurately state current industry lifecycle status (Active, NRND, or Obsolete/EOL).
+        2. Provide exact MPN for an active drop-in or functional substitute.
         3. State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
-        4. Summarize key technical differences or confirm identical pin-to-pin functional equivalence.
-        5. Generate direct distributor search URLs for the part.
+        4. Summarize key technical differences (package material, temperature range, speed grade, voltage).
+        5. Generate direct distributor search URLs.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "NE555P",
+            "mpn": "LM741J",
             "manufacturer": "Texas Instruments",
-            "status": "Active",
-            "substitute": "LM555CN / SA555P",
-            "substitute_mfr": "onsemi / STMicroelectronics",
-            "pin_compatible": "Yes (Direct DIP-8 Drop-in)",
-            "key_differences": "Direct pin-to-pin functional equivalent timer IC in DIP-8 package.",
+            "status": "Obsolete",
+            "substitute": "LM741CN / UA741CP",
+            "substitute_mfr": "Texas Instruments / STMicroelectronics",
+            "pin_compatible": "No (Commercial Plastic DIP-8 vs Ceramic CDIP-8)",
+            "key_differences": "Plastic DIP package (0°C to 70°C) replacing discontinued military ceramic CDIP 'J' package (-55°C to 125°C).",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=LM555CN",
-              "mouser": "https://www.mouser.com/c/?q=LM555CN",
-              "octopart": "https://octopart.com/search?q=LM555CN",
-              "element14": "https://in.element14.com/search?st=LM555CN"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=LM741CN",
+              "mouser": "https://www.mouser.com/c/?q=LM741CN",
+              "octopart": "https://octopart.com/search?q=LM741CN",
+              "element14": "https://in.element14.com/search?st=LM741CN"
             }},
-            "analysis": "Part is Active. Alternative second-source options like LM555CN (onsemi) or SA555P (TI/ST) provide multi-sourcing flexibility."
+            "analysis": "LM741J (Ceramic 'J' package) was discontinued by Texas Instruments. Commercial plastic alternatives like LM741CN are active but operate at commercial temp ranges."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -157,7 +166,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+            temperature=0.0  # Zero temperature for deterministic accuracy
         )
         
         text = response.choices[0].message.content.strip()
@@ -175,7 +184,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# Helper function to render a result card with AI-generated Supplier Links
+# Helper function to render a result card
 def render_component_card(item):
     status = str(item.get("status", "Active"))
     mpn = str(item.get("mpn", "Unknown"))
@@ -195,7 +204,6 @@ def render_component_card(item):
     else:
         badge = "🟢 ACTIVE"
 
-    # Extract supplier URLs directly generated by AI
     digikey_url = links.get("digikey", f"https://www.digikey.com/en/products/result?keywords={mpn}")
     mouser_url = links.get("mouser", f"https://www.mouser.com/c/?q={mpn}")
     octopart_url = links.get("octopart", f"https://octopart.com/search?q={mpn}")
@@ -233,7 +241,7 @@ def render_component_card(item):
         st.markdown("**Engineering Sourcing Analysis:**")
         st.write(analysis)
         
-        st.markdown("**AI-Generated Distributor Verification Links:**")
+        st.markdown("**Distributor Verification Links:**")
         st.markdown(f"[📦 DigiKey]({digikey_url}) &nbsp;|&nbsp; [🏬 Mouser Electronics]({mouser_url}) &nbsp;|&nbsp; [🔍 Octopart Aggregator]({octopart_url}) &nbsp;|&nbsp; [🌐 Element14 / Farnell]({element14_url})")
 
 # 4. Tabbed Interface Setup
@@ -246,7 +254,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. NE555N, AMS1117-3.3, STM32F103C8T6, LM7805", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. CY7C1354C-166AXC, LM741J, NE555N, AMS1117-3.3", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
