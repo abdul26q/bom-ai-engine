@@ -4,7 +4,7 @@ from groq import Groq
 import json
 import os
 
-# 1. Modern Page Setup & Custom Styling
+# 1. Page Setup & Custom Theme Styling
 st.set_page_config(
     page_title="TraceGuard AI | Component Risk Engine", 
     layout="wide",
@@ -12,7 +12,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Backend Groq API Key
 
 
 def get_api_key():
@@ -21,7 +20,7 @@ def get_api_key():
     except Exception:
         return BACKEND_GROQ_KEY
 
-# Custom CSS for executive UI polish
+# Custom CSS for UI polish
 st.markdown("""
 <style>
     /* Metric Card Styling */
@@ -48,10 +47,10 @@ st.markdown("""
     .sub-header {
         font-size: 1.05rem;
         color: #94A3B8;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     
-    /* Comparison Boxes */
+    /* Comparison Card Boxes */
     .comp-box-original {
         background-color: #1E1B4B;
         padding: 16px;
@@ -90,7 +89,7 @@ if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
 st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automated BOM Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Automated Component Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
 
 # 2. Sidebar Layout
 with st.sidebar:
@@ -100,19 +99,18 @@ with st.sidebar:
     st.success("⚡ TraceGuard Core: Online")
     
     st.markdown("---")
-    st.markdown("### 📋 Executive Summary Guide")
-    st.caption("• **Active (🟢):** Safe for full mass production.")
-    st.caption("• **NRND (🟡):** Not Recommended for New Designs.")
-    st.caption("• **Obsolete/EOL (🔴):** Immediate substitute required.")
+    st.markdown("### 📋 Navigation Guide")
+    st.caption("• **Instant Lookup:** Search a single part number for immediate status and replacements.")
+    st.caption("• **BOM Audit:** Upload a full CSV for batch risk scoring and exportable reports.")
 
-# 3. Batch Analysis Engine via Groq (With Package Guardrails)
-def analyze_entire_bom_with_groq(bom_data_str, api_key):
+# 3. Groq Core Engine
+def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
 
         prompt = f"""
         You are an expert Electronics Hardware, Component Sourcing, and Supply Chain Engineer.
-        Analyze the following list of electronic components from a Bill of Materials:
+        Analyze the following list of electronic components:
 
         {bom_data_str}
 
@@ -122,7 +120,7 @@ def analyze_entire_bom_with_groq(bom_data_str, api_key):
         3. Drop-in compatibility requires matching: Voltage Rating, Current Limits, Pinout Mapping, and Physical Footprint.
 
         Task:
-        For EACH component listed in the BOM:
+        For EACH component listed:
         1. Determine or confirm the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
         2. If **Active**, confirm it is production-ready.
         3. If **NRND** or **Obsolete/EOL**:
@@ -167,134 +165,164 @@ def analyze_entire_bom_with_groq(bom_data_str, api_key):
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# 4. Upload & Dashboard Interface
-uploaded_file = st.file_uploader("Upload Bill of Materials (CSV)", type=["csv"], help="Upload CSV containing MPN, Description, or Manufacturer columns.")
+# Helper function to render a result card
+def render_component_card(item):
+    status = str(item.get("status", "Active"))
+    mpn = str(item.get("mpn", "Unknown"))
+    mfr = str(item.get("manufacturer", "N/A"))
+    substitute = str(item.get("substitute", "N/A"))
+    sub_mfr = str(item.get("substitute_mfr", "N/A"))
+    pin_compat = str(item.get("pin_compatible", "N/A"))
+    diffs = str(item.get("key_differences", "None noted."))
+    analysis = str(item.get("analysis", "No analysis provided."))
 
-if uploaded_file:
-    bom_df = pd.read_csv(uploaded_file)
-    
-    with st.expander("📄 Raw Uploaded BOM Data Preview", expanded=False):
-        st.dataframe(bom_df, use_container_width=True)
+    status_upper = status.upper()
+    if "OBSOLETE" in status_upper or "EOL" in status_upper:
+        badge = "🔴 OBSOLETE / EOL"
+    elif "NRND" in status_upper:
+        badge = "🟡 NRND (NOT RECOMMENDED)"
+    else:
+        badge = "🟢 ACTIVE"
 
-    col_btn, _ = st.columns([1, 3])
-    with col_btn:
-        run_audit = st.button("🚀 Run TraceGuard Risk Audit", type="primary", use_container_width=True)
+    search_url = f"[https://www.mouser.com/c/?q=](https://www.mouser.com/c/?q=){substitute if substitute != 'N/A' else mpn}"
 
-    if run_audit:
-        active_key = get_api_key()
+    with st.expander(f"{badge}  |  Part Number: {mpn}", expanded=True):
+        c_left, c_right = st.columns(2)
+        
+        with c_left:
+            left_box = (
+                '<div class="comp-box-original">'
+                '<div class="box-title title-orig">Current BOM Component</div>'
+                f'<div class="part-mpn">{mpn}</div>'
+                f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {mfr}</p>'
+                f'<p style="margin-bottom: 0px;"><b>Status:</b> {status}</p>'
+                '</div>'
+            )
+            st.markdown(left_box, unsafe_allow_html=True)
 
-        with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
-            bom_summary = []
-            for _, row in bom_df.iterrows():
-                mpn = str(
-                    row.get("MPN") or 
-                    row.get("Part Number") or 
-                    row.get("Item Number") or 
-                    row.get("Item") or ""
-                ).strip()
-                desc = str(row.get("Description", "")).strip()
-                mfr = str(row.get("Manufacturer", "")).strip()
-                bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
-
-            bom_data_str = "\n".join(bom_summary)
-            results = analyze_entire_bom_with_groq(bom_data_str, active_key)
+        with c_right:
+            right_box = (
+                '<div class="comp-box-recommended">'
+                '<div class="box-title title-rec">TraceGuard Recommended Substitute</div>'
+                f'<div class="part-mpn">{substitute}</div>'
+                f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>'
+                f'<p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>'
+                '</div>'
+            )
+            st.markdown(right_box, unsafe_allow_html=True)
 
         st.markdown("---")
+        st.markdown("**Key Specification Differences:**")
+        st.info(diffs)
+        
+        st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
+        st.write(analysis)
+        st.markdown(f"[🔗 Verify Specs on Mouser Catalog]({search_url})")
 
-        if results:
-            total_parts = len(results)
-            nrnd_count = sum(1 for x in results if "NRND" in str(x.get("status", "")).upper())
-            obsolete_count = sum(1 for x in results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
-            active_count = total_parts - (nrnd_count + obsolete_count)
-            
-            risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
+# 4. Tabbed Interface Setup
+tab1, tab2 = st.tabs(["🔍 Instant Part Search", "📁 Batch BOM Upload Audit"])
 
-            # Executive KPI Cards
-            st.subheader("📊 Executive Risk Overview")
+# --- TAB 1: INSTANT COMPONENT SEARCH ---
+with tab1:
+    st.subheader("Search Component Lifecycle & Substitutes")
+    st.caption("Type any Manufacturer Part Number (MPN) to perform an instant risk lookup.")
+    
+    col_input, col_btn_search = st.columns([3, 1])
+    with col_input:
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. AMS1117-3.3, STM32F103C8T6, LM7805", label_visibility="collapsed")
+    with col_btn_search:
+        btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
+
+    if btn_search and search_mpn.strip():
+        active_key = get_api_key()
+        with st.spinner(f"🤖 Searching lifecycle and substitutes for {search_mpn.strip()}..."):
+            query_str = f"MPN: {search_mpn.strip()} | Single Part Search Query"
+            search_results = analyze_components_with_groq(query_str, active_key)
             
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Line Items", total_parts)
-            m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
-            m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
-            m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
+        if search_results:
+            st.markdown("---")
+            st.subheader("🔍 Component Search Results")
+            for item in search_results:
+                render_component_card(item)
+
+# --- TAB 2: BATCH BOM UPLOAD AUDIT ---
+with tab2:
+    uploaded_file = st.file_uploader("Upload Bill of Materials (CSV)", type=["csv"], help="Upload CSV containing MPN, Description, or Manufacturer columns.")
+
+    if uploaded_file:
+        bom_df = pd.read_csv(uploaded_file)
+        
+        with st.expander("📄 Raw Uploaded BOM Data Preview", expanded=False):
+            st.dataframe(bom_df, use_container_width=True)
+
+        col_btn_audit, _ = st.columns([1, 3])
+        with col_btn_audit:
+            run_audit = st.button("🚀 Run Full BOM Risk Audit", type="primary", use_container_width=True)
+
+        if run_audit:
+            active_key = get_api_key()
+
+            with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
+                bom_summary = []
+                for _, row in bom_df.iterrows():
+                    mpn = str(
+                        row.get("MPN") or 
+                        row.get("Part Number") or 
+                        row.get("Item Number") or 
+                        row.get("Item") or ""
+                    ).strip()
+                    desc = str(row.get("Description", "")).strip()
+                    mfr = str(row.get("Manufacturer", "")).strip()
+                    bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
+
+                bom_data_str = "\n".join(bom_summary)
+                results = analyze_components_with_groq(bom_data_str, active_key)
 
             st.markdown("---")
-            st.subheader("🔍 Component Comparison & Substitute Matrix")
 
-            export_rows = []
+            if results:
+                total_parts = len(results)
+                nrnd_count = sum(1 for x in results if "NRND" in str(x.get("status", "")).upper())
+                obsolete_count = sum(1 for x in results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
+                active_count = total_parts - (nrnd_count + obsolete_count)
+                
+                risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
 
-            for item in results:
-                status = str(item.get("status", "Active"))
-                mpn = str(item.get("mpn", "Unknown"))
-                mfr = str(item.get("manufacturer", "N/A"))
-                substitute = str(item.get("substitute", "N/A"))
-                sub_mfr = str(item.get("substitute_mfr", "N/A"))
-                pin_compat = str(item.get("pin_compatible", "N/A"))
-                diffs = str(item.get("key_differences", "None noted."))
-                analysis = str(item.get("analysis", "No analysis provided."))
+                # Executive KPI Cards
+                st.subheader("📊 Executive Risk Overview")
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Total Line Items", total_parts)
+                m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
+                m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
+                m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
 
-                status_upper = status.upper()
-                if "OBSOLETE" in status_upper or "EOL" in status_upper:
-                    badge = "🔴 OBSOLETE / EOL"
-                elif "NRND" in status_upper:
-                    badge = "🟡 NRND (NOT RECOMMENDED)"
-                else:
-                    badge = "🟢 ACTIVE"
+                st.markdown("---")
+                st.subheader("🔍 Component Comparison & Substitute Matrix")
 
-                search_url = f"https://www.mouser.com/c/?q={substitute if substitute != 'N/A' else mpn}"
+                export_rows = []
 
-                # Expander Card with Side-by-Side Comparison
-                with st.expander(f"{badge}  |  Part Number: {mpn}"):
-                    c_left, c_right = st.columns(2)
-                    
-                    with c_left:
-                        left_box = (
-                            '<div class="comp-box-original">'
-                            '<div class="box-title title-orig">Current BOM Component</div>'
-                            f'<div class="part-mpn">{mpn}</div>'
-                            f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {mfr}</p>'
-                            f'<p style="margin-bottom: 0px;"><b>Status:</b> {status}</p>'
-                            '</div>'
-                        )
-                        st.markdown(left_box, unsafe_allow_html=True)
+                for item in results:
+                    render_component_card(item)
 
-                    with c_right:
-                        right_box = (
-                            '<div class="comp-box-recommended">'
-                            '<div class="box-title title-rec">TraceGuard Recommended Substitute</div>'
-                            f'<div class="part-mpn">{substitute}</div>'
-                            f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>'
-                            f'<p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>'
-                            '</div>'
-                        )
-                        st.markdown(right_box, unsafe_allow_html=True)
+                    export_rows.append({
+                        "Original MPN": str(item.get("mpn", "")),
+                        "Current Status": str(item.get("status", "")),
+                        "Recommended Substitute": str(item.get("substitute", "")),
+                        "Pin Compatible": str(item.get("pin_compatible", "")),
+                        "Key Differences": str(item.get("key_differences", "")),
+                        "Engineering Analysis": str(item.get("analysis", ""))
+                    })
 
-                    st.markdown("---")
-                    st.markdown("**Key Specification Differences:**")
-                    st.info(diffs)
-                    
-                    st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
-                    st.write(analysis)
-                    st.markdown(f"[🔗 Verify Substitute Specs on Mouser Catalog]({search_url})")
+                # CSV Download Section
+                st.markdown("---")
+                export_df = pd.DataFrame(export_rows)
+                csv_data = export_df.to_csv(index=False).encode('utf-8')
 
-                export_rows.append({
-                    "Original MPN": mpn,
-                    "Current Status": status,
-                    "Recommended Substitute": substitute,
-                    "Pin Compatible": pin_compat,
-                    "Key Differences": diffs,
-                    "Engineering Analysis": analysis
-                })
-
-            # CSV Download Section
-            st.markdown("---")
-            export_df = pd.DataFrame(export_rows)
-            csv_data = export_df.to_csv(index=False).encode('utf-8')
-
-            st.download_button(
-                label="📥 Export Audited Risk Report (CSV)",
-                data=csv_data,
-                file_name="TraceGuard_BOM_Risk_Report.csv",
-                mime="text/csv",
-                type="primary"
-            )
+                st.download_button(
+                    label="📥 Export Audited Risk Report (CSV)",
+                    data=csv_data,
+                    file_name="TraceGuard_BOM_Risk_Report.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
