@@ -1,0 +1,5 @@
+MPN,Category,Package,Pin_Count,Voltage_V,Current_A,Status
+LM7805,Voltage Regulator,TO-220,3,5.0,1.5,Obsolete
+ATmega328P-PU,Microcontroller,DIP-28,28,5.0,0.2,NRND
+NE555P,Timer IC,DIP-8,8,15.0,0.2,Active
+LM358N,Op-Amp,DIP-8,8,32.0,0.05,Active
