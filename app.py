@@ -48,14 +48,14 @@ with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", width=140)
     st.title("System Status")
-    st.success("⚡ TraceGuard AI Core: Precision Guard Active")
-    st.info("🔒 Deterministic Rule Engine + Consistency Verifier")
+    st.success("⚡ TraceGuard AI Core: Active Rule Enforcement")
+    st.info("🔒 Strict Active Part Guardrail: Enabled")
     st.markdown("---")
-    st.caption("• **Active (🟢):** Production-ready.")
+    st.caption("• **Active (🟢):** Production-ready. No substitution suggested.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs.")
-    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or non-RoHS IC line.")
+    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or IC line.")
 
-# 3. High-Precision AI Reasoning Engine with Strict Logic Consistency Rules
+# 3. High-Precision AI Reasoning Engine
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
@@ -66,51 +66,47 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         {bom_data_str}
 
-        CRITICAL CONSISTENCY & HARDWARE RULES (ZERO CONTRADICTION):
+        CRITICAL ACTIVE COMPONENT RULE (MANDATORY):
+        - IF A COMPONENT IS ACTIVE (e.g., NE555P, 6N137, GRM188R71H104KA93D, RC0603FR-0710KL, XC7K325T-2FFG90C):
+          1. Set "status" to "Active".
+          2. Set "substitute" to "None required (Component is Active)".
+          3. Set "substitute_mfr" to "N/A".
+          4. Set "pin_compatible" to "N/A (Component is Active)".
+          5. Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
+          6. Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
+          7. DO NOT suggest any alternative MPNs for Active components!
 
-        1. STRICT STATUS CONCORDANCE (NEVER CONTRADICT STATUS IN TEXT):
-           - If a component is non-RoHS, leaded, or phased out (e.g., MAX7219CNG, MAX232CPE, MC14069UBD, TLE2426CLP), the 'status' field MUST BE 'Obsolete' or 'NRND'.
-           - NEVER set 'status' to 'Active' if your text states that the part is "obsolete", "discontinued", or "not recommended for new designs".
-           - The status, summary text, and engineering analysis MUST fully agree with each other.
-
-        2. EXACT SUFFIX & ROHS PARSING:
-           - MAXIM / ANALOG DEVICES: Non-'+' suffixes (e.g., MAX7219CNG, MAX232CPE, MAX232EWE) are non-RoHS leaded variants and are OBSOLETE/NRND. Always mark status as 'Obsolete' or 'NRND' and recommend the '+' version (e.g., MAX7219CNG+).
-           - TEXAS INSTRUMENTS: Suffix 'LP' / 'LPR' = TO-92 3-pin package (e.g. TLE2426CLP is Obsolete; recommend TLE2426CD/CDR in SOIC-8). Suffix 'D'/'DR' = SOIC-8, 'P' = PDIP-8, 'J' = Ceramic CDIP (Obsolete).
-           - ONSEMI / MOTOROLA: Non-'G' suffixes (e.g., MC14069UBD) are non-RoHS leaded variants and are OBSOLETE/NRND. Recommend 'G' version (e.g., MC14069UBDG).
-           - MICROCHIP / ATMEL: Through-hole DIP-28 packages (e.g., ATMEGA328-PU) are NRND/EOL. Recommend surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
-
-        3. FULL ORDERABLE MPN REQUIREMENT:
-           - NEVER output the base query as substitute if it matches the input.
-           - Output explicit orderable MPNs with exact package/RoHS suffixes.
-
-        4. PHYSICAL PACKAGE MATCHING & REDESIGN WARNINGS:
-           - Match footprints exactly (SOIC-8 to SOIC-8, DIP-8 to DIP-8, TO-92 to TO-92).
-           - If recommending an SOIC-8 surface mount replacement for a TO-92 through-hole part, explicitly state in pin_compatible: "No (PCB Layout Redesign Required: SOIC-8 Surface Mount replacing TO-92 Through-Hole)".
+        CRITICAL RULES FOR OBSOLETE AND NRND COMPONENTS:
+        1. TEXAS INSTRUMENTS: Suffix 'LP' / 'LPR' = TO-92 3-pin package. TLE2426CLP is Obsolete. Recommend TLE2426CD/CDR in SOIC-8 with explicit PCB redesign warning.
+        2. MAXIM / ANALOG DEVICES: Non-'+' suffixes (e.g. MAX7219CNG, MAX232CPE) are non-RoHS leaded variants and are Obsolete. Recommend '+' version (e.g. MAX7219CNG+).
+        3. ONSEMI / MOTOROLA: Non-'G' suffixes (e.g. MC14069UBD) are non-RoHS leaded variants and are Obsolete. Recommend 'G' version (e.g. MC14069UBDG).
+        4. MICROCHIP / ATMEL: Through-hole DIP-28 packages (e.g. ATMEGA328-PU) are NRND/EOL. Recommend surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
+        5. STMICROELECTRONICS: STM32F103 series (e.g. STM32F103C8T6) is NRND. Recommend STM32G071CBT6 or STM32F4.
 
         Task:
         For EACH component listed:
         1. State industry lifecycle status accurately ('Active', 'NRND', or 'Obsolete').
-        2. Provide exact orderable MPN for an active substitute in an appropriate package.
-        3. State pinout compatibility accurately without logical self-contradictions.
-        4. Detail key technical differences and generate direct multi-distributor URLs.
+        2. If Active, explicitly state no substitute is required.
+        3. If Obsolete or NRND, provide exact orderable substitute MPN.
+        4. Generate direct distributor search URLs for the component.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "MAX7219CNG",
-            "manufacturer": "Maxim Integrated / Analog Devices",
-            "status": "Obsolete",
-            "substitute": "MAX7219CNG+",
-            "substitute_mfr": "Analog Devices",
-            "pin_compatible": "Yes (Direct PDIP-24 Drop-in)",
-            "key_differences": "MAX7219CNG+ is the active lead-free (RoHS-compliant) direct drop-in replacement for the discontinued non-RoHS MAX7219CNG.",
+            "mpn": "NE555P",
+            "manufacturer": "Texas Instruments",
+            "status": "Active",
+            "substitute": "None required (Component is Active)",
+            "substitute_mfr": "N/A",
+            "pin_compatible": "N/A (Component is Active)",
+            "key_differences": "No replacement required. The component is active, in mass production, and fully safe for design use.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=MAX7219CNG%2B",
-              "mouser": "https://www.mouser.com/c/?q=MAX7219CNG%2B",
-              "octopart": "https://octopart.com/search?q=MAX7219CNG%2B",
-              "element14": "https://in.element14.com/search?st=MAX7219CNG%2B"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=NE555P",
+              "mouser": "https://www.mouser.com/c/?q=NE555P",
+              "octopart": "https://octopart.com/search?q=NE555P",
+              "element14": "https://in.element14.com/search?st=NE555P"
             }},
-            "analysis": "MAX7219CNG is obsolete due to non-RoHS leaded packaging. The RoHS-compliant MAX7219CNG+ is active, production-ready, and pin-to-pin compatible."
+            "analysis": "Part is Active and widely available from major distributors. No substitution required."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -142,7 +138,7 @@ def render_component_card(item):
     status = str(item.get("status", "Active"))
     mpn = str(item.get("mpn", "Unknown"))
     mfr = str(item.get("manufacturer", "N/A"))
-    substitute = str(item.get("substitute", "N/A"))
+    substitute = str(item.get("substitute", "None required (Component is Active)"))
     sub_mfr = str(item.get("substitute_mfr", "N/A"))
     pin_compat = str(item.get("pin_compatible", "N/A"))
     diffs = str(item.get("key_differences", "None noted."))
