@@ -13,7 +13,6 @@ st.set_page_config(
 )
 
 
-
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -84,7 +83,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Clean Header Section (Logo Image + Main Header)
+# Clean Header Section
 if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
@@ -235,7 +234,7 @@ if uploaded_file:
                 else:
                     badge = "🟢 ACTIVE"
 
-                search_url = f"[https://www.mouser.com/c/?q=](https://www.mouser.com/c/?q=){substitute if substitute != 'N/A' else mpn}"
+                search_url = f"https://www.mouser.com/c/?q={substitute if substitute != 'N/A' else mpn}"
 
                 # Expander Card with Side-by-Side Comparison
                 with st.expander(f"{badge}  |  Part Number: {mpn}"):
@@ -243,17 +242,54 @@ if uploaded_file:
                     
                     # Left Side: Current Component
                     with c_left:
-                        st.markdown(f"""
-                        <div class="comp-box-original">
-                            <div class="box-title title-orig">Current BOM Component</div>
-                            <div class="part-mpn">{mpn}</div>
-                            <p style="margin-bottom: 4px;"><b>Manufacturer:</b> {mfr}</p>
-                            <p style="margin-bottom: 0px;"><b>Status:</b> {status}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        left_box = (
+                            '<div class="comp-box-original">'
+                            '<div class="box-title title-orig">Current BOM Component</div>'
+                            f'<div class="part-mpn">{mpn}</div>'
+                            f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {mfr}</p>'
+                            f'<p style="margin-bottom: 0px;"><b>Status:</b> {status}</p>'
+                            '</div>'
+                        )
+                        st.markdown(left_box, unsafe_allow_html=True)
 
                     # Right Side: TraceGuard Recommended Substitute
                     with c_right:
-                        st.markdown(f"""
-                        <div class="comp-box-recommended">
-                            <div class="box-title title-
+                        right_box = (
+                            '<div class="comp-box-recommended">'
+                            '<div class="box-title title-rec">TraceGuard Recommended Substitute</div>'
+                            f'<div class="part-mpn">{substitute}</div>'
+                            f'<p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>'
+                            f'<p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>'
+                            '</div>'
+                        )
+                        st.markdown(right_box, unsafe_allow_html=True)
+
+                    st.markdown("---")
+                    st.markdown("**Key Specification Differences:**")
+                    st.info(diffs)
+                    
+                    st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
+                    st.write(analysis)
+                    st.markdown(f"[🔗 Verify Substitute Specs on Mouser Catalog]({search_url})")
+
+                export_rows.append({
+                    "Original MPN": mpn,
+                    "Current Status": status,
+                    "Recommended Substitute": substitute,
+                    "Pin Compatible": pin_compat,
+                    "Key Differences": diffs,
+                    "Engineering Analysis": analysis
+                })
+
+            # CSV Download Section
+            st.markdown("---")
+            export_df = pd.DataFrame(export_rows)
+            csv_data = export_df.to_csv(index=False).encode('utf-8')
+
+            st.download_button(
+                label="📥 Export Audited Risk Report (CSV)",
+                data=csv_data,
+                file_name="TraceGuard_BOM_Risk_Report.csv",
+                mime="text/csv",
+                type="primary"
+            )
