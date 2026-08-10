@@ -13,7 +13,6 @@ st.set_page_config(
 )
 
 
-
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -110,47 +109,51 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         CRITICAL LIFECYCLE & SUFFIX AUDIT RULES:
 
-        1. LEADED vs. ROHS COMPLIANCE SUFFIXES (STRICT OBSOLESCENCE):
+        1. FULL ORDERABLE MPN REQUIREMENT (NO GENERIC BASE ECHOING):
+           - NEVER output a generic root part number as the recommended alternative if it matches the query (e.g. for input '6N137', DO NOT return '6N137').
+           - You MUST provide specific, orderable full MPNs with exact package suffixes (e.g. '6N137M' for DIP-8 through-hole optocoupler, '6N137SD' for SMD, or cross-brand alternatives like 'HCPL-2601' / 'VO2601').
+           - The recommended substitute MPN MUST be a distinct, orderable part number.
+
+        2. LEADED vs. ROHS COMPLIANCE SUFFIXES (STRICT OBSOLESCENCE):
            - Maxim/Analog Devices: Parts lacking '+' (e.g. MAX232CPE, MAX232EWE) are non-RoHS leaded packages and are OBSOLETE. Suggest the '+' suffix version (e.g. MAX232CPE+) as the active substitute.
            - onsemi / Motorola: SOIC/DIP parts lacking 'G' suffix (e.g. MC14069UBD, MC14011BD) are non-RoHS leaded variants and are OBSOLETE. Suggest the 'G' suffix version (e.g. MC14069UBDG) as the active substitute.
 
-        2. LEGACY PACKAGE & ARCHITECTURE PHASING (NRND / EOL):
-           - Microchip/Atmel DIP-28 packages (e.g. ATMEGA328-PU, ATMEGA328P-PU, ATMEGA168-20PU) are NRND/EOL. Suggest surface-mount variants (e.g. ATMEGA328P-AU in TQFP-32) or ATmega328PB.
-           - STMicroelectronics STM32F103 series (e.g. STM32F103C8T6) is NRND (Not Recommended for New Designs). Suggest STM32G071CBT6 or STM32F4 series as modern active alternatives.
+        3. LEGACY PACKAGE & ARCHITECTURE PHASING (NRND / EOL):
+           - Microchip/Atmel DIP-28 packages (e.g. ATMEGA328-PU, ATMEGA328P-PU) are NRND/EOL. Suggest surface-mount variants (e.g. ATMEGA328P-AU in TQFP-32) or ATmega328PB.
+           - STMicroelectronics STM32F103 series (e.g. STM32F103C8T6) is NRND. Suggest STM32G071CBT6 or STM32F4 series as modern active alternatives.
            - Ceramic DIP suffixes ('J', 'CJ', e.g. LM741J) and Metal Cans ('H') are OBSOLETE.
 
-        3. MAINSTREAM FPGA & SOC ACTIVE PARTS (DO NOT FALSE-FLAG):
-           - Xilinx Kintex-7 FPGAs (e.g. XC7K325T-2FFG90C, XC7K160T) are ACTIVE mainstream production parts. Do NOT mark Kintex-7 or Artix-7 as NRND.
-           - Active ICs (e.g. BQ24072RGTR, RC0603FR-0710KL, GRM188R71H104KA93D) must remain marked ACTIVE, but still provide second-source alternatives for supply chain resilience.
+        4. MAINSTREAM FPGA & SOC ACTIVE PARTS:
+           - Xilinx Kintex-7 FPGAs (e.g. XC7K325T-2FFG90C) are ACTIVE mainstream production parts. Do NOT mark Kintex-7 as NRND.
 
-        4. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
+        5. PHYSICAL PACKAGE & FOOTPRINT MATCHING:
            - Always match exact physical package footprints (SOIC-8 to SOIC-8, DIP-8 to DIP-8, TQFP-48 to TQFP-48). Never substitute SOT-223 with SOT-23.
 
         Task:
         For EACH component listed:
         1. Accurately state current industry lifecycle status (Active, NRND, or Obsolete/EOL).
-        2. Provide exact MPN for an active drop-in or functional substitute.
+        2. Provide exact orderable MPN for an active drop-in or second-source substitute in the SAME physical package (e.g., 6N137M / VO2601 for 6N137).
         3. State whether it is **Pin-Compatible (Direct Drop-in)** or requires **PCB Layout Redesign**.
-        4. Summarize key technical differences (RoHS compliance, package material, core architecture).
-        5. Generate direct distributor search URLs.
+        4. Summarize key technical differences or confirm package suffix specification.
+        5. Generate direct distributor search URLs for the substitute part.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "MAX232CPE",
-            "manufacturer": "Maxim Integrated / Analog Devices",
-            "status": "Obsolete",
-            "substitute": "MAX232CPE+",
-            "substitute_mfr": "Analog Devices",
-            "pin_compatible": "Yes (Direct PDIP-16 Drop-in)",
-            "key_differences": "MAX232CPE+ is the active lead-free (RoHS compliant) direct drop-in replacement for discontinued non-RoHS MAX232CPE.",
+            "mpn": "6N137",
+            "manufacturer": "onsemi / Vishay",
+            "status": "Active",
+            "substitute": "6N137M / VO2601",
+            "substitute_mfr": "onsemi / Vishay Intertechnology",
+            "pin_compatible": "Yes (Direct DIP-8 Drop-in)",
+            "key_differences": "6N137M specifies the explicit 8-pin DIP white package option. VO2601 is an active pin-compatible 10MBd high-speed optocoupler alternative.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=MAX232CPE%2B",
-              "mouser": "https://www.mouser.com/c/?q=MAX232CPE%2B",
-              "octopart": "https://octopart.com/search?q=MAX232CPE%2B",
-              "element14": "https://in.element14.com/search?st=MAX232CPE%2B"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=6N137M",
+              "mouser": "https://www.mouser.com/c/?q=6N137M",
+              "octopart": "https://octopart.com/search?q=6N137M",
+              "element14": "https://in.element14.com/search?st=6N137M"
             }},
-            "analysis": "MAX232CPE is obsolete as non-RoHS leaded packages were phased out. The RoHS-compliant MAX232CPE+ is active and pin-to-pin compatible."
+            "analysis": "Part is Active. Specifying full ordering suffix 6N137M ensures 8-pin DIP through-hole packaging. VO2601 serves as a high-reliability second source."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -247,7 +250,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MAX232CPE, STM32F103C8T6, ATMEGA328-PU, XC7K325T-2FFG90C", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. 6N137, MAX232CPE, STM32F103C8T6, ATMEGA328-PU", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
@@ -327,20 +330,4 @@ with tab2:
                         "Original MPN": str(item.get("mpn", "")),
                         "Current Status": str(item.get("status", "")),
                         "Recommended Substitute": str(item.get("substitute", "")),
-                        "Pin Compatible": str(item.get("pin_compatible", "")),
-                        "Key Differences": str(item.get("key_differences", "")),
-                        "Engineering Analysis": str(item.get("analysis", ""))
-                    })
-
-                # CSV Download Section
-                st.markdown("---")
-                export_df = pd.DataFrame(export_rows)
-                csv_data = export_df.to_csv(index=False).encode('utf-8')
-
-                st.download_button(
-                    label="📥 Export Audited Risk Report (CSV)",
-                    data=csv_data,
-                    file_name="TraceGuard_BOM_Risk_Report.csv",
-                    mime="text/csv",
-                    type="primary"
-                )
+                        "Pin Compatible": str(item
