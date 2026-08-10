@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import time
 from openai import OpenAI
 
 # 1. Page Configuration
@@ -16,11 +17,10 @@ st.write("Upload a Bill of Materials (CSV) to analyze lifecycle risks and genera
 st.sidebar.header("🔑 Configuration")
 openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
 
-# 3. AI Hardware Reasoning Function
-def evaluate_component_with_ai(part_info, api_key):
+# 3. Robust AI Hardware Reasoning Function
+def evaluate_component_with_ai(part_info, api_key, max_retries=3):
     """
-    Sends component information to the LLM to verify lifecycle status 
-    and recommend active parametric replacements.
+    Calls OpenAI API with retry logic for rate limits.
     """
     client = OpenAI(api_key=api_key)
 
@@ -32,26 +32,37 @@ def evaluate_component_with_ai(part_info, api_key):
     - Manufacturer: {part_info.get('Manufacturer', 'N/A')}
     - Description: {part_info.get('Description', 'N/A')}
     - Category: {part_info.get('Category', 'N/A')}
-    - Current File Status: {part_info.get('Status', 'Unknown')}
 
     Task:
-    1. Determine or confirm the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
+    1. Determine the current industry lifecycle status (Active, NRND, or Obsolete/EOL).
     2. If the component is **Active**, explicitly state that it is safe to use.
     3. If the component is **NRND**, **Obsolete**, or **EOL**:
        - Provide an exact Manufacturer Part Number (MPN) for an active drop-in or functional substitute.
        - State whether the replacement is Pin-Compatible (Direct drop-in) or requires PCB layout redesign.
-       - Detail any key technical differences (operating voltage, current rating, or package footprint).
+       - Detail key technical differences (operating voltage, current rating, footprint).
 
     Keep the output concise, structured, and strictly factual.
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2  # Low temperature prevents hallucinations
-    )
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if "rate_limit" in str(e).lower() or "429" in str(e):
+                if attempt < max_retries - 1:
+                    time.sleep(2 * (attempt + 1))  # Exponential backoff delay
+                    continue
+                else:
+                    return f"⚠️ **Rate Limit Exceeded:** OpenAI API limit reached for {part_info['MPN']}. Please check your API quota or wait a minute before retrying."
+            else:
+                return f"⚠️ **API Error:** {str(e)}"
 
-    return response.choices[0].message.content
+    return "⚠️ Failed to fetch response after multiple attempts."
 
 # 4. File Upload & Processing Interface
 uploaded_file = st.file_uploader("Upload BOM File (CSV format)", type=["csv"])
@@ -71,15 +82,13 @@ if uploaded_file:
         total_items = len(bom_df)
 
         for idx, row in bom_df.iterrows():
-            # Flexible column detection for different CSV formats
             mpn = str(
                 row.get("MPN") or 
                 row.get("Part Number") or 
                 row.get("PartNumber") or 
-                row.get("Item") or ""
+                row.get("Item Number") or ""
             ).strip()
 
-            # Check if status exists in CSV; if absent, flag for AI analysis
             status_in_file = str(
                 row.get("Status") or 
                 row.get("Lifecycle_Status") or 
@@ -92,24 +101,23 @@ if uploaded_file:
                 "Status": status_in_file,
                 "Manufacturer": row.get("Manufacturer", "N/A"),
                 "Description": row.get("Description", "N/A"),
-                "Category": row.get("Category", "N/A"),
-                "Package": row.get("Package", "N/A")
+                "Category": row.get("Category", "N/A")
             }
 
             with st.spinner(f"Analyzing component [{idx + 1}/{total_items}]: {mpn}..."):
-                # If explicit status is Active, skip AI; otherwise run full evaluation
                 if status_in_file.upper() == "ACTIVE":
                     ai_recommendation = "✅ Component is Active according to uploaded BOM data. No replacement required."
                     detected_status = "Active"
                 else:
                     ai_recommendation = evaluate_component_with_ai(part_payload, openai_api_key)
                     
-                    # Inspect AI response to determine badge color
                     rec_upper = ai_recommendation.upper()
                     if "OBSOLETE" in rec_upper or "EOL" in rec_upper:
                         detected_status = "Obsolete / EOL"
                     elif "NRND" in rec_upper or "NOT RECOMMENDED" in rec_upper:
                         detected_status = "NRND"
+                    elif "RATE LIMIT" in rec_upper or "API ERROR" in rec_upper:
+                        detected_status = "Error"
                     else:
                         detected_status = "Active"
 
@@ -119,12 +127,13 @@ if uploaded_file:
                 "AI Engineering Analysis": ai_recommendation
             })
 
+            # Small 0.5s pause between items to prevent hitting API rate limits
+            time.sleep(0.5)
             progress_bar.progress((idx + 1) / total_items)
 
         st.divider()
         st.subheader("Audit & Substitute Recommendations")
 
-        # Display results in structured collapsible expanders
         for res in results:
             status = res["Lifecycle Status"]
             
@@ -132,6 +141,8 @@ if uploaded_file:
                 badge = "🔴"
             elif status == "NRND":
                 badge = "🟡"
+            elif status == "Error":
+                badge = "⚠️"
             else:
                 badge = "🟢"
 
