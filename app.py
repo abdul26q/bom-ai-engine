@@ -3,7 +3,6 @@ import pandas as pd
 from groq import Groq
 import json
 import os
-import requests
 
 # 1. Page Configuration & Setup
 st.set_page_config(
@@ -12,6 +11,7 @@ st.set_page_config(
     page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
+
 
 
 def get_api_key():
@@ -49,73 +49,68 @@ with st.sidebar:
         st.image("logo.png", width=140)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Precision Guard Active")
-    st.info("🔒 Deterministic Rule Engine + Suffix Verifier: Enabled")
+    st.info("🔒 Deterministic Rule Engine + Consistency Verifier")
     st.markdown("---")
     st.caption("• **Active (🟢):** Production-ready.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs.")
-    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or IC line.")
+    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or non-RoHS IC line.")
 
-# 3. High-Precision AI Reasoning Engine with Strict Suffix Logic
+# 3. High-Precision AI Reasoning Engine with Strict Logic Consistency Rules
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
 
         prompt = f"""
-        You are an elite Lead Semiconductor Sourcing Engineer and PCN (Product Change Notification) Database Audit Specialist.
-        Analyze the following component query with 100% deterministic accuracy:
+        You are an elite Semiconductor Sourcing Engineer and PCN (Product Change Notification) Database Audit Specialist.
+        Analyze the following component query with 100% deterministic accuracy and STRICT LOGICAL CONSISTENCY:
 
         {bom_data_str}
 
-        CRITICAL HARDWARE RULES FOR 100% ACCURACY:
+        CRITICAL CONSISTENCY & HARDWARE RULES (ZERO CONTRADICTION):
 
-        1. EXACT CHARACTER-BY-CHARACTER SUFFIX PARSING:
-           - TEXAS INSTRUMENTS (TI):
-             * 'LP' and 'LPR' suffixes = 3-pin TO-92 plastic through-hole package ('R' = Tape & Reel). They are NEVER SSOP or SOIC!
-             * TLE2426CLP and TLE2426CLPR are OBSOLETE/EOL. The active surface-mount replacements are TLE2426CD or TLE2426CDR (SOIC-8).
-             * Suffix 'D' / 'DR' = SOIC-8, 'P' = PDIP-8, 'PW' = TSSOP-8, 'J' = Ceramic CDIP (Obsolete).
-           - MAXIM / ANALOG DEVICES:
-             * Non-'+' suffixes (e.g. MAX232CPE, MAX232EWE) are non-RoHS leaded variants and are OBSOLETE. Recommend '+' version (e.g. MAX232CPE+).
-           - ONSEMI / MOTOROLA:
-             * Non-'G' suffixes (e.g. MC14069UBD, MC14011BD) are non-RoHS leaded variants and are OBSOLETE. Recommend 'G' version (e.g. MC14069UBDG).
-           - MICROCHIP / ATMEL:
-             * Through-hole DIP-28 packages (e.g. ATMEGA328-PU, ATMEGA328P-PU) are NRND / EOL. Suggest surface-mount variants (ATMEGA328P-AU in TQFP-32) or ATmega328PB.
-           - STMICROELECTRONICS:
-             * STM32F103 series (e.g. STM32F103C8T6) is NRND. Recommend STM32G071CBT6 or STM32F4.
-           - CYPRESS / INFINEON:
-             * Legacy SRAM speed grades (e.g. CY7C1354C-166AXC, 166MHz grade) are EOL/OBSOLETE.
+        1. STRICT STATUS CONCORDANCE (NEVER CONTRADICT STATUS IN TEXT):
+           - If a component is non-RoHS, leaded, or phased out (e.g., MAX7219CNG, MAX232CPE, MC14069UBD, TLE2426CLP), the 'status' field MUST BE 'Obsolete' or 'NRND'.
+           - NEVER set 'status' to 'Active' if your text states that the part is "obsolete", "discontinued", or "not recommended for new designs".
+           - The status, summary text, and engineering analysis MUST fully agree with each other.
 
-        2. FULL ORDERABLE MPN REQUIREMENT:
-           - NEVER output the base query as substitute (e.g. for input '6N137', DO NOT return '6N137').
-           - Output explicit orderable MPNs with exact package suffixes (e.g., '6N137M' for DIP-8 through-hole optocoupler, or cross-brand 'VO2601').
+        2. EXACT SUFFIX & ROHS PARSING:
+           - MAXIM / ANALOG DEVICES: Non-'+' suffixes (e.g., MAX7219CNG, MAX232CPE, MAX232EWE) are non-RoHS leaded variants and are OBSOLETE/NRND. Always mark status as 'Obsolete' or 'NRND' and recommend the '+' version (e.g., MAX7219CNG+).
+           - TEXAS INSTRUMENTS: Suffix 'LP' / 'LPR' = TO-92 3-pin package (e.g. TLE2426CLP is Obsolete; recommend TLE2426CD/CDR in SOIC-8). Suffix 'D'/'DR' = SOIC-8, 'P' = PDIP-8, 'J' = Ceramic CDIP (Obsolete).
+           - ONSEMI / MOTOROLA: Non-'G' suffixes (e.g., MC14069UBD) are non-RoHS leaded variants and are OBSOLETE/NRND. Recommend 'G' version (e.g., MC14069UBDG).
+           - MICROCHIP / ATMEL: Through-hole DIP-28 packages (e.g., ATMEGA328-PU) are NRND/EOL. Recommend surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
 
-        3. PHYSICAL PACKAGE MATCHING & FOOTPRINT REDESIGN WARNINGS:
+        3. FULL ORDERABLE MPN REQUIREMENT:
+           - NEVER output the base query as substitute if it matches the input.
+           - Output explicit orderable MPNs with exact package/RoHS suffixes.
+
+        4. PHYSICAL PACKAGE MATCHING & REDESIGN WARNINGS:
            - Match footprints exactly (SOIC-8 to SOIC-8, DIP-8 to DIP-8, TO-92 to TO-92).
-           - If recommending an SOIC-8 surface mount replacement for an obsolete TO-92 through-hole part, explicitly state in pin_compatible: "No (PCB Layout Redesign Required: SOIC-8 Surface Mount replacing TO-92 Through-Hole)".
+           - If recommending an SOIC-8 surface mount replacement for a TO-92 through-hole part, explicitly state in pin_compatible: "No (PCB Layout Redesign Required: SOIC-8 Surface Mount replacing TO-92 Through-Hole)".
 
         Task:
         For EACH component listed:
-        1. Accurately state current industry lifecycle status (Active, NRND, or Obsolete/EOL).
+        1. State industry lifecycle status accurately ('Active', 'NRND', or 'Obsolete').
         2. Provide exact orderable MPN for an active substitute in an appropriate package.
-        3. State pinout compatibility accurately without hallucinating package types.
+        3. State pinout compatibility accurately without logical self-contradictions.
         4. Detail key technical differences and generate direct multi-distributor URLs.
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "TLE2426CLP",
-            "manufacturer": "Texas Instruments",
+            "mpn": "MAX7219CNG",
+            "manufacturer": "Maxim Integrated / Analog Devices",
             "status": "Obsolete",
-            "substitute": "TLE2426CD / TLE2426CDR",
-            "substitute_mfr": "Texas Instruments",
-            "pin_compatible": "No (PCB Layout Redesign Required: SOIC-8 Surface Mount replacing TO-92 Through-Hole)",
-            "key_differences": "TLE2426CLP (TO-92 3-pin through-hole package) was discontinued by TI. The active replacement line is TLE2426CD / TLE2426CDR in 8-pin SOIC surface-mount packaging.",
+            "substitute": "MAX7219CNG+",
+            "substitute_mfr": "Analog Devices",
+            "pin_compatible": "Yes (Direct PDIP-24 Drop-in)",
+            "key_differences": "MAX7219CNG+ is the active lead-free (RoHS-compliant) direct drop-in replacement for the discontinued non-RoHS MAX7219CNG.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=TLE2426CD",
-              "mouser": "https://www.mouser.com/c/?q=TLE2426CD",
-              "octopart": "https://octopart.com/search?q=TLE2426CD",
-              "element14": "https://in.element14.com/search?st=TLE2426CD"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=MAX7219CNG%2B",
+              "mouser": "https://www.mouser.com/c/?q=MAX7219CNG%2B",
+              "octopart": "https://octopart.com/search?q=MAX7219CNG%2B",
+              "element14": "https://in.element14.com/search?st=MAX7219CNG%2B"
             }},
-            "analysis": "TLE2426CLP in TO-92 package was officially discontinued by Texas Instruments. Recommending the active TLE2426CD in SOIC-8 package for long-term production."
+            "analysis": "MAX7219CNG is obsolete due to non-RoHS leaded packaging. The RoHS-compliant MAX7219CNG+ is active, production-ready, and pin-to-pin compatible."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -124,7 +119,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0  # Zero temperature forces deterministic accuracy
+            temperature=0.0
         )
         
         text = response.choices[0].message.content.strip()
@@ -212,7 +207,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. TLE2426CLP, 6N137, MAX232CPE, STM32F103C8T6", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MAX7219CNG, TLE2426CLP, 6N137, STM32F103C8T6", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
