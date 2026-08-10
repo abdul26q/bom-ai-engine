@@ -13,6 +13,7 @@ st.set_page_config(
 )
 
 
+
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -36,12 +37,12 @@ st.markdown("""
     
     /* Headers & Typography */
     .main-header {
-        font-size: 2.4rem;
+        font-size: 2.6rem;
         font-weight: 800;
         background: linear-gradient(90deg, #E11D48 0%, #F97316 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.1rem;
     }
     .sub-header {
         font-size: 1.05rem;
@@ -83,22 +84,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Main Title & Header Section with TraceGuard Logo
-col_logo, col_title = st.columns([1, 6])
-with col_logo:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=110)
-    else:
-        st.image("https://img.icons8.com/isometric/100/circuit.png", width=80)
+# Clean Header Section (Logo Image + Main Header)
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=160)
 
-with col_title:
-    st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Automated BOM Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Automated BOM Lifecycle Risk Auditing & Drop-in Substitute Intelligence</div>', unsafe_allow_html=True)
 
 # 2. Sidebar Layout
 with st.sidebar:
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=150)
+        st.image("logo.png", width=140)
     st.title("System Status")
     st.success("⚡ TraceGuard Core: Online")
     
@@ -239,7 +235,7 @@ if uploaded_file:
                 else:
                     badge = "🟢 ACTIVE"
 
-                search_url = f"https://www.mouser.com/c/?q={substitute if substitute != 'N/A' else mpn}"
+                search_url = f"[https://www.mouser.com/c/?q=](https://www.mouser.com/c/?q=){substitute if substitute != 'N/A' else mpn}"
 
                 # Expander Card with Side-by-Side Comparison
                 with st.expander(f"{badge}  |  Part Number: {mpn}"):
@@ -260,39 +256,4 @@ if uploaded_file:
                     with c_right:
                         st.markdown(f"""
                         <div class="comp-box-recommended">
-                            <div class="box-title title-rec">TraceGuard Recommended Substitute</div>
-                            <div class="part-mpn">{substitute}</div>
-                            <p style="margin-bottom: 4px;"><b>Manufacturer:</b> {sub_mfr}</p>
-                            <p style="margin-bottom: 0px;"><b>Pinout Compatibility:</b> {pin_compat}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    st.markdown("---")
-                    st.markdown("**Key Specification Differences:**")
-                    st.info(diffs)
-                    
-                    st.markdown("**Engineering Analysis & Sourcing Recommendation:**")
-                    st.write(analysis)
-                    st.markdown(f"[🔗 Verify Substitute Specs on Mouser Catalog]({search_url})")
-
-                export_rows.append({
-                    "Original MPN": mpn,
-                    "Current Status": status,
-                    "Recommended Substitute": substitute,
-                    "Pin Compatible": pin_compat,
-                    "Key Differences": diffs,
-                    "Engineering Analysis": analysis
-                })
-
-            # CSV Download Section
-            st.markdown("---")
-            export_df = pd.DataFrame(export_rows)
-            csv_data = export_df.to_csv(index=False).encode('utf-8')
-
-            st.download_button(
-                label="📥 Export Audited Risk Report (CSV)",
-                data=csv_data,
-                file_name="TraceGuard_BOM_Risk_Report.csv",
-                mime="text/csv",
-                type="primary"
-            )
+                            <div class="box-title title-
