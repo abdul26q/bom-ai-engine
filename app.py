@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-from google import genai
+from groq import Groq
 import json
 
-# 1. Page Setup
+# 1. Page Configuration
 st.set_page_config(
-    page_title="AI Component Obsolescence Engine", 
+    page_title="AI Component Obsolescence & Substitute Engine", 
     layout="wide",
     page_icon="⚡"
 )
@@ -15,13 +15,12 @@ st.write("Upload a Bill of Materials (CSV) to analyze lifecycle risks and genera
 
 # 2. Sidebar Configuration
 st.sidebar.header("🔑 Configuration")
-gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
+groq_api_key = st.sidebar.text_input("Groq API Key", type="password", help="Get a free API key at console.groq.com")
 
-# 3. Batch Analysis Function
-def analyze_entire_bom(bom_data_str, api_key):
+# 3. Batch Analysis Function using Groq
+def analyze_entire_bom_with_groq(bom_data_str, api_key):
     try:
-        # Initialize the modern Gemini Client
-        client = genai.Client(api_key=api_key)
+        client = Groq(api_key=api_key)
 
         prompt = f"""
         You are an expert Electronics Hardware and Sourcing Engineer.
@@ -36,7 +35,7 @@ def analyze_entire_bom(bom_data_str, api_key):
         3. If **NRND** or **Obsolete/EOL**:
            - Provide an exact Manufacturer Part Number (MPN) for an active drop-in or functional substitute.
            - State whether it is Pin-Compatible (Direct drop-in) or requires PCB layout redesign.
-           - Detail key technical differences (voltage, current rating, footprint).
+           - Detail key technical differences (voltage rating, current rating, footprint, or package).
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
@@ -46,15 +45,16 @@ def analyze_entire_bom(bom_data_str, api_key):
             "analysis": "Markdown detailed analysis text"
           }}
         ]
-        Do not wrap in triple backticks or write conversational text. Output pure JSON only.
+        Do not wrap in code blocks or include conversational text. Output pure JSON only.
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
         )
         
-        text = response.text.strip()
+        text = response.choices[0].message.content.strip()
         
         # Clean JSON formatting wrappers if present
         if text.startswith("```json"):
@@ -70,7 +70,7 @@ def analyze_entire_bom(bom_data_str, api_key):
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# 4. Upload Interface
+# 4. Upload & UI Processing Interface
 uploaded_file = st.file_uploader("Upload BOM File (CSV format)", type=["csv"])
 
 if uploaded_file:
@@ -79,11 +79,11 @@ if uploaded_file:
     st.dataframe(bom_df, use_container_width=True)
 
     if st.button("Run AI Lifecycle Audit", type="primary"):
-        if not gemini_api_key:
-            st.error("Please enter your Gemini API key in the sidebar.")
+        if not groq_api_key:
+            st.error("Please enter your Groq API key in the sidebar configuration.")
             st.stop()
 
-        with st.spinner("Analyzing full BOM with AI in a single batch request..."):
+        with st.spinner("Analyzing full BOM using Groq Llama-3.3-70B in a single request..."):
             bom_summary = []
             for _, row in bom_df.iterrows():
                 mpn = str(
@@ -97,7 +97,7 @@ if uploaded_file:
                 bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
 
             bom_data_str = "\n".join(bom_summary)
-            results = analyze_entire_bom(bom_data_str, gemini_api_key)
+            results = analyze_entire_bom_with_groq(bom_data_str, groq_api_key)
 
         st.divider()
         st.subheader("Audit & Substitute Recommendations")
