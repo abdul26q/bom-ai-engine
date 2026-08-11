@@ -11,6 +11,7 @@ st.set_page_config(
     page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
+
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -50,7 +51,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("• **Active (🟢):** Production-ready. No substitution suggested.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs. Modern alternative provided.")
-    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or IC line. Active drop-in provided.")
+    st.caption("• **Obsolete/EOL (🔴):** Discontinued. Active drop-in provided.")
 
 # 3. High-Precision Groq AI Core Engine
 def analyze_components_with_groq(bom_data_str, api_key):
@@ -67,8 +68,11 @@ def analyze_components_with_groq(bom_data_str, api_key):
         STRICT 5-STEP ANALYSIS PROTOCOL (MUST APPLY TO EVERY SINGLE MPN):
         ========================================================================
 
-        STEP 1: BASE FAMILY IDENTIFICATION
-        - Identify core chip family (e.g., LM7805, UA741, MAX7219, TLE2426, STM32F103, ATMEGA328, MC14069, MAX232).
+        STEP 1: BASE FAMILY IDENTIFICATION & MEMS/SENSOR AUDIT
+        - MEMS & MOTION SENSOR DISCONTINUATION RULES:
+          * InvenSense / TDK MPU-6050, MPU-6000, MPU-6500, MPU-9250 are OBSOLETE / EOL. InvenSense officially replaced them with the ICM series (e.g. ICM-42688-P, ICM-20948) or Bosch BMI270 / ST LSM6DSOX.
+          * Analog Devices ADXL335 / ADXL345 legacy variants are NRND / OBSOLETE; recommend ADXL355 or ADXL372.
+          * Bosch BME280 / BMP280 remain Active, but ensure exact suffix matching.
 
         STEP 2: PACKAGE & FORM-FACTOR DECODING
         - Analyze package suffix code:
@@ -85,19 +89,20 @@ def analyze_components_with_groq(bom_data_str, api_key):
           * Texas Instruments: Lacking 'NOPB' or non-standard legacy leaded finishes.
 
         STEP 4: LIFECYCLE DETERMINATION MATRIX
-        - DISCONTINUED / OBSOLETE SUFFIXES:
-          * LM7805CT / LM7805T (Non-G / Non-NOPB legacy TO-220 through-hole variants) = OBSOLETE / NRND. Modern active lead-free versions are MC7805CTG (onsemi) or LM7805CT/NOPB (TI) or surface mount LM7805S / TO-263.
-          * UA741CN / LM741CN / LM741J (Legacy 1960s bipolar op-amps in DIP) = NRND / OBSOLETE.
-          * TLE2426CLP / TLE2426CLPR (TO-92 through-hole package) = OBSOLETE. Active parts are TLE2426CD / TLE2426CDR (SOIC-8).
-          * MAX7219CNG / MAX232CPE (Non-'+' non-RoHS variants) = OBSOLETE / NRND.
-          * MC14069UBD (Non-'G' non-RoHS variants) = OBSOLETE / NRND.
-          * ATMEGA328-PU (DIP-28 through-hole package) = NRND / EOL.
-          * STM32F103C8T6 (Legacy Cortex-M3 line) = NRND.
+        - DISCONTINUED / OBSOLETE PARTS:
+          * MPU-6050 / MPU-9250 / MPU-6500 (Legacy InvenSense IMUs) = OBSOLETE / EOL. Active replacements are ICM-42688-P (TDK InvenSense) or BMI270 (Bosch) / LSM6DSOX (ST).
+          * LM7805CT / LM7805T (Non-G / Non-NOPB legacy TO-220 through-hole) = OBSOLETE / NRND. Active parts are MC7805CTG (onsemi) or LM7805CT/NOPB (TI).
+          * UA741CN / LM741CN / LM741J (Legacy 1960s bipolar op-amps in DIP) = NRND / OBSOLETE. Modern alternatives are LM358N or TL071CP.
+          * TLE2426CLP / TLE2426CLPR (TO-92 package) = OBSOLETE. Active parts are TLE2426CD / TLE2426CDR (SOIC-8).
+          * MAX7219CNG / MAX232CPE (Non-'+' non-RoHS) = OBSOLETE / NRND.
+          * MC14069UBD (Non-'G' non-RoHS) = OBSOLETE / NRND.
+          * ATMEGA328-PU (DIP-28 through-hole) = NRND / EOL.
+          * STM32F103C8T6 (Legacy Cortex-M3) = NRND.
 
         STEP 5: SUBSTITUTION POLICY
         - IF STATUS IS 'Obsolete' OR 'NRND':
-          * Provide exact, active, orderable MPN with proper package/RoHS suffixes (e.g., MC7805CTG or LM7805CT/NOPB for LM7805CT; LM358N or TL071CP for UA741CN; MAX7219CNG+ for MAX7219CNG; TLE2426CD for TLE2426CLP).
-        - IF STATUS IS 'Active' (ONLY for fully active modern parts like MC7805CTG, MAX7219CNG+, NE555P, 6N137M, XC7K325T-2FFG90C):
+          * Provide exact, active, orderable MPN with proper package/RoHS suffixes (e.g., ICM-42688-P / BMI270 for MPU-6050; MC7805CTG for LM7805CT; LM358N for UA741CN; MAX7219CNG+ for MAX7219CNG; TLE2426CD for TLE2426CLP).
+        - IF STATUS IS 'Active' (ONLY for fully active modern parts like MC7805CTG, MAX7219CNG+, NE555P, 6N137M, XC7K325T-2FFG90C, ICM-42688-P):
           * Set "substitute" to "None required (Component is Active)".
           * Set "substitute_mfr" to "N/A".
           * Set "pin_compatible" to "N/A (Component is Active)".
@@ -107,20 +112,20 @@ def analyze_components_with_groq(bom_data_str, api_key):
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "LM7805CT",
-            "manufacturer": "Texas Instruments / Fairchild",
+            "mpn": "MPU-6050",
+            "manufacturer": "InvenSense / TDK",
             "status": "Obsolete",
-            "substitute": "MC7805CTG / LM7805CT/NOPB",
-            "substitute_mfr": "onsemi / Texas Instruments",
-            "pin_compatible": "Yes (Direct TO-220 Drop-in)",
-            "key_differences": "MC7805CTG and LM7805CT/NOPB provide full Pb-free RoHS compliance in a standard TO-220 3-pin through-hole package, replacing the legacy discontinued non-RoHS LM7805CT.",
+            "substitute": "ICM-42688-P / BMI270",
+            "substitute_mfr": "TDK InvenSense / Bosch Sensortec",
+            "pin_compatible": "No (PCB Layout Redesign Required: Modern LGA package replacing legacy QFN-24)",
+            "key_differences": "MPU-6050 is officially EOL/Obsolete. Modern replacements like ICM-42688-P or BMI270 offer significantly lower noise, lower power consumption, higher FIFO depth, and improved gyro drift stability.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=MC7805CTG",
-              "mouser": "https://www.mouser.com/c/?q=MC7805CTG",
-              "octopart": "https://octopart.com/search?q=MC7805CTG",
-              "element14": "https://in.element14.com/search?st=MC7805CTG"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=ICM-42688-P",
+              "mouser": "https://www.mouser.com/c/?q=ICM-42688-P",
+              "octopart": "https://octopart.com/search?q=ICM-42688-P",
+              "element14": "https://in.element14.com/search?st=ICM-42688-P"
             }},
-            "analysis": "LM7805CT in legacy non-RoHS TO-220 packaging has been discontinued/phased out by manufacturers. Upgrading to MC7805CTG (onsemi) or LM7805CT/NOPB (TI) ensures direct pin-to-pin compatibility with active RoHS compliance."
+            "analysis": "MPU-6050 has been officially discontinued by InvenSense/TDK. Transitioning to active 6-axis IMUs like the ICM-42688-P or Bosch BMI270 is required for new hardware designs."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -217,7 +222,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. LM7805CT, UA741CN, MAX7219CNG, TLE2426CLP, MC7805CTG", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MPU-6050, LM7805CT, UA741CN, MAX7219CNG, TLE2426CLP", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
