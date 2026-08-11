@@ -47,7 +47,7 @@ with st.sidebar:
         st.image("logo.png", width=140)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Active")
-    st.info("🔒 5-Step Deep Nomenclature Audit: Enabled")
+    st.info("🔒 8-Layer Master Nomenclature Audit: Active")
     st.markdown("---")
     st.caption("• **Active (🟢):** Production-ready. No substitution suggested.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs. Modern alternative provided.")
@@ -59,73 +59,89 @@ def analyze_components_with_groq(bom_data_str, api_key):
         client = Groq(api_key=api_key)
 
         prompt = f"""
-        You are an elite Semiconductor Sourcing Engineer, Component Quality Manager, and Product Change Notification (PCN) Specialist.
-        Audit the following component query using a STRICT 5-STEP EVALUATION PROTOCOL:
+        You are an elite Semiconductor Sourcing Engineer, Component Quality Assurance Lead, and Product Change Notification (PCN) Database Specialist.
+        Your task is to audit the given electronic component query with 100% deterministic, zero-hallucination accuracy using an EXHAUSTIVE 8-LAYER HIERARCHICAL DECISION TREE.
 
         {bom_data_str}
 
-        ========================================================================
-        STRICT 5-STEP ANALYSIS PROTOCOL (MUST APPLY TO EVERY SINGLE MPN):
-        ========================================================================
+        ========================================================================================
+        EXHAUSTIVE 8-LAYER HIERARCHICAL NOMENCLATURE & LIFECYCLE DECISION TREE
+        ========================================================================================
 
-        STEP 1: BASE FAMILY IDENTIFICATION & MEMS/SENSOR AUDIT
-        - MEMS & MOTION SENSOR DISCONTINUATION RULES:
-          * InvenSense / TDK MPU-6050, MPU-6000, MPU-6500, MPU-9250 are OBSOLETE / EOL. InvenSense officially replaced them with the ICM series (e.g. ICM-42688-P, ICM-20948) or Bosch BMI270 / ST LSM6DSOX.
-          * Analog Devices ADXL335 / ADXL345 legacy variants are NRND / OBSOLETE; recommend ADXL355 or ADXL372.
-          * Bosch BME280 / BMP280 remain Active, but ensure exact suffix matching.
+        LAYER 1: COMPONENT BASE FAMILY & ARCHITECTURE AUDIT
+        1. LEGACY POWER DRIVERS & H-BRIDGES:
+           - L298 / L298N / L293 / L293D / L298P: Mark as 'NRND' or 'Obsolete'. Legacy bipolar Darlington drivers suffer from extreme heat loss (2-3V drop) and outdated Multiwatt/DIP packaging. Recommending a replacement is MANDATORY: Toshiba TB6612FNG, TI DRV8833, or Maxim MAX14870.
+        2. LINEAR REGULATORS & POWER MANAGEMENT:
+           - LM7805CT / LM7805T / LM317T (Legacy non-RoHS/non-NOPB TO-220 through-hole variants): Mark as 'Obsolete' or 'NRND'. Recommend active lead-free replacements: onsemi MC7805CTG, TI LM7805CT/NOPB, or surface-mount TO-263 equivalents (LM7805S).
+        3. MEMS & MOTION TRACKING SENSORS:
+           - InvenSense/TDK MPU-6050, MPU-6000, MPU-6500, MPU-9250: Mark as 'Obsolete' / 'EOL'. InvenSense officially discontinued these. Recommend active replacements: TDK ICM-42688-P, Bosch BMI270, or ST LSM6DSOX.
+           - Analog Devices ADXL335 / ADXL345 (legacy variants): Mark as 'NRND' / 'Obsolete'. Recommend ADXL355 or ADXL372.
+        4. OP-AMPS & ANALOG FRONT-ENDS:
+           - UA741 / LM741 / UA741CN / UA741CP / LM741J: Mark as 'NRND' or 'Obsolete'. Legacy 1960s bipolar op-amps in PDIP-8/CDIP are phased out for new designs. Recommend active PDIP-8 alternatives: LM358N, NE5532, or TL071CP.
+           - TLE2426CLP / TLE2426CLPR: Mark as 'Obsolete' / 'EOL'. Texas Instruments discontinued the 3-pin TO-92 plastic package ('LP' / 'LPR' suffix). Recommend active SOIC-8 versions TLE2426CD / TLE2426CDR with explicit PCB redesign warning.
+        5. MICROCONTROLLERS & DIGITAL LOGIC:
+           - ATMEGA328-PU / ATMEGA328P-PU (Through-hole DIP-28): Mark as 'NRND' / 'EOL'. Recommend surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
+           - STMicroelectronics STM32F103 / STM32F103C8T6 (Cortex-M3 "Blue Pill" IC): Mark as 'NRND'. Replaced by STM32G071CBT6 or STM32F4 series.
 
-        STEP 2: PACKAGE & FORM-FACTOR DECODING
-        - Analyze package suffix code:
-          * 'T' or 'CT' (e.g., LM7805CT, LM317T) = TO-220 3-pin Through-Hole package.
-          * 'LP' or 'LPR' (e.g., TLE2426CLP) = TO-92 3-pin Through-Hole plastic package.
-          * 'PU' or 'P' (e.g., ATMEGA328-PU, NE555P) = DIP Through-Hole package.
-          * 'CN' or 'CP' or 'J' (e.g., UA741CN, LM741J) = Legacy DIP-8 or Ceramic DIP package.
-          * 'D', 'DR', 'BD', 'EWE' = SOIC Surface Mount package.
+        LAYER 2: PACKAGE SUFFIX DECODING & FORM-FACTOR PARSING
+        - Inspect the exact package suffix code:
+          * 'CT' or 'T' = TO-220 Through-Hole 3-pin package.
+          * 'LP' or 'LPR' = TO-92 Through-Hole 3-pin plastic package ('R' = Tape & Reel). Never classify LP/LPR as SSOP or SOIC!
+          * 'N' or 'PU' or 'P' = DIP / PDIP Through-Hole package.
+          * 'CN' or 'CP' or 'J' = Legacy PDIP-8 or Ceramic CDIP package.
+          * 'D' or 'DR' or 'BD' or 'EWE' = SOIC Surface Mount package.
+          * 'M' or 'SD' = Optocoupler specific DIP-8 / SMD-8 package.
 
-        STEP 3: ROHS & ENVIRONMENTAL COMPLIANCE AUDIT
-        - Verify lead-free / RoHS designations:
-          * Maxim / Analog Devices: Lacking '+' suffix (e.g., MAX7219CNG, MAX232CPE) = Non-RoHS leaded variant.
-          * onsemi / Motorola: Lacking 'G' suffix (e.g., MC14069UBD, MC7805CTG vs MC7805CT) = Non-RoHS leaded variant.
-          * Texas Instruments: Lacking 'NOPB' or non-standard legacy leaded finishes.
+        LAYER 3: ROHS & ENVIRONMENTAL COMPLIANCE SUFFIX AUDIT
+        - Check for lead-free / RoHS compliance markers:
+          * Maxim / Analog Devices: Lacking '+' suffix (e.g., MAX7219CNG, MAX232CPE, MAX232EWE) = Non-RoHS leaded variant -> Mark as 'Obsolete' / 'NRND' and recommend '+' version (e.g., MAX7219CNG+).
+          * onsemi / Motorola: Lacking 'G' suffix (e.g., MC14069UBD, MC14011BD) = Non-RoHS leaded variant -> Mark as 'Obsolete' / 'NRND' and recommend 'G' version (e.g., MC14069UBDG).
+          * Texas Instruments: Lacking 'NOPB' finish on legacy packages -> Mark as 'NRND' / 'Obsolete'.
 
-        STEP 4: LIFECYCLE DETERMINATION MATRIX
-        - DISCONTINUED / OBSOLETE PARTS:
-          * MPU-6050 / MPU-9250 / MPU-6500 (Legacy InvenSense IMUs) = OBSOLETE / EOL. Active replacements are ICM-42688-P (TDK InvenSense) or BMI270 (Bosch) / LSM6DSOX (ST).
-          * LM7805CT / LM7805T (Non-G / Non-NOPB legacy TO-220 through-hole) = OBSOLETE / NRND. Active parts are MC7805CTG (onsemi) or LM7805CT/NOPB (TI).
-          * UA741CN / LM741CN / LM741J (Legacy 1960s bipolar op-amps in DIP) = NRND / OBSOLETE. Modern alternatives are LM358N or TL071CP.
-          * TLE2426CLP / TLE2426CLPR (TO-92 package) = OBSOLETE. Active parts are TLE2426CD / TLE2426CDR (SOIC-8).
-          * MAX7219CNG / MAX232CPE (Non-'+' non-RoHS) = OBSOLETE / NRND.
-          * MC14069UBD (Non-'G' non-RoHS) = OBSOLETE / NRND.
-          * ATMEGA328-PU (DIP-28 through-hole) = NRND / EOL.
-          * STM32F103C8T6 (Legacy Cortex-M3) = NRND.
+        LAYER 4: DETERMINISTIC LIFECYCLE CLASSIFICATION MATRIX
+        - A part is classified as 'Obsolete' if: The package is officially discontinued, non-RoHS compliant, or PCN states EOL.
+        - A part is classified as 'NRND' if: The manufacturer officially recommends newer chip families (e.g., STM32G0 replacing STM32F1, or MOSFET drivers replacing Darlington BJTs).
+        - A part is classified as 'Active' ONLY IF: It is in current mass production, fully supported, RoHS compliant, and has no active PCN replacement notices (e.g., MC7805CTG, MAX7219CNG+, NE555P, 6N137M, XC7K325T-2FFG90C, TB6612FNG, ICM-42688-P).
 
-        STEP 5: SUBSTITUTION POLICY
-        - IF STATUS IS 'Obsolete' OR 'NRND':
-          * Provide exact, active, orderable MPN with proper package/RoHS suffixes (e.g., ICM-42688-P / BMI270 for MPU-6050; MC7805CTG for LM7805CT; LM358N for UA741CN; MAX7219CNG+ for MAX7219CNG; TLE2426CD for TLE2426CLP).
-        - IF STATUS IS 'Active' (ONLY for fully active modern parts like MC7805CTG, MAX7219CNG+, NE555P, 6N137M, XC7K325T-2FFG90C, ICM-42688-P):
-          * Set "substitute" to "None required (Component is Active)".
-          * Set "substitute_mfr" to "N/A".
-          * Set "pin_compatible" to "N/A (Component is Active)".
-          * Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
-          * Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
+        LAYER 5: STRICT SUBSTITUTION POLICY
+        - CONDITION A: IF STATUS IS 'Obsolete' OR 'NRND':
+          1. Set "status" to "Obsolete" or "NRND".
+          2. You MUST provide an explicit, orderable, active substitute MPN in "substitute".
+          3. Detail exact technical differences, pinout changes, or efficiency gains in "key_differences".
+          4. If replacing a through-hole component with a surface-mount variant, set "pin_compatible" to: "No (PCB Layout Redesign Required: Surface-Mount replacing Through-Hole)".
+        - CONDITION B: IF AND ONLY IF STATUS IS 'Active':
+          1. Set "status" to "Active".
+          2. Set "substitute" to "None required (Component is Active)".
+          3. Set "substitute_mfr" to "N/A".
+          4. Set "pin_compatible" to "N/A (Component is Active)".
+          5. Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
+          6. Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
 
-        Respond STRICTLY in valid raw JSON array format as a list of objects like this:
+        LAYER 6: MULTI-DISTRIBUTOR URL GENERATION
+        - Populate 'supplier_links' with valid query URLs for DigiKey, Mouser, Octopart, and Element14 targeting the recommended substitute MPN (or original MPN if Active).
+
+        LAYER 7: JSON STRUCTURE MANDATE
+        - Output strictly in raw JSON array format matching the schema below. No markdown backticks, explanations, or conversational text.
+
+        ========================================================================================
+        JSON OUTPUT SCHEMA EXAMPLE
+        ========================================================================================
         [
           {{
-            "mpn": "MPU-6050",
-            "manufacturer": "InvenSense / TDK",
-            "status": "Obsolete",
-            "substitute": "ICM-42688-P / BMI270",
-            "substitute_mfr": "TDK InvenSense / Bosch Sensortec",
-            "pin_compatible": "No (PCB Layout Redesign Required: Modern LGA package replacing legacy QFN-24)",
-            "key_differences": "MPU-6050 is officially EOL/Obsolete. Modern replacements like ICM-42688-P or BMI270 offer significantly lower noise, lower power consumption, higher FIFO depth, and improved gyro drift stability.",
+            "mpn": "L298N",
+            "manufacturer": "STMicroelectronics",
+            "status": "NRND",
+            "substitute": "TB6612FNG / DRV8833",
+            "substitute_mfr": "Toshiba / Texas Instruments",
+            "pin_compatible": "No (PCB Layout Redesign Required: Surface-Mount MOSFET Driver replacing Through-Hole Multiwatt-15)",
+            "key_differences": "TB6612FNG and DRV8833 use high-efficiency MOSFET H-bridges instead of L298N's outdated Darlington BJT architecture, eliminating severe 2-3V thermal voltage losses and bulky heatsinks.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=ICM-42688-P",
-              "mouser": "https://www.mouser.com/c/?q=ICM-42688-P",
-              "octopart": "https://octopart.com/search?q=ICM-42688-P",
-              "element14": "https://in.element14.com/search?st=ICM-42688-P"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=TB6612FNG",
+              "mouser": "https://www.mouser.com/c/?q=TB6612FNG",
+              "octopart": "https://octopart.com/search?q=TB6612FNG",
+              "element14": "https://in.element14.com/search?st=TB6612FNG"
             }},
-            "analysis": "MPU-6050 has been officially discontinued by InvenSense/TDK. Transitioning to active 6-axis IMUs like the ICM-42688-P or Bosch BMI270 is required for new hardware designs."
+            "analysis": "L298N in Multiwatt-15 packaging is Not Recommended for New Designs (NRND). Its legacy bipolar transistors cause extreme power waste and heat generation. Upgrading to modern MOSFET drivers like Toshiba TB6612FNG or TI DRV8833 drastically improves power efficiency and reduces board space."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -222,7 +238,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MPU-6050, LM7805CT, UA741CN, MAX7219CNG, TLE2426CLP", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. L298N, MPU-6050, LM7805CT, UA741CN, MAX7219CNG", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
