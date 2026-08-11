@@ -11,8 +11,6 @@ st.set_page_config(
     page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
-
-
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -48,11 +46,11 @@ with st.sidebar:
         st.image("logo.png", width=140)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Active")
-    st.info("🔒 Strict Active Part Policy: Enabled")
+    st.info("🔒 5-Step Deep Nomenclature Audit: Enabled")
     st.markdown("---")
     st.caption("• **Active (🟢):** Production-ready. No substitution suggested.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs. Modern alternative provided.")
-    st.caption("• **Obsolete/EOL (🔴):** Discontinued. Active drop-in provided.")
+    st.caption("• **Obsolete/EOL (🔴):** Discontinued package or IC line. Active drop-in provided.")
 
 # 3. High-Precision Groq AI Core Engine
 def analyze_components_with_groq(bom_data_str, api_key):
@@ -60,58 +58,69 @@ def analyze_components_with_groq(bom_data_str, api_key):
         client = Groq(api_key=api_key)
 
         prompt = f"""
-        You are an elite Semiconductor Sourcing Engineer and PCN (Product Change Notification) Database Audit Specialist.
-        Analyze the following component query by evaluating part nomenclature hierarchy and lifecycle status:
+        You are an elite Semiconductor Sourcing Engineer, Component Quality Manager, and Product Change Notification (PCN) Specialist.
+        Audit the following component query using a STRICT 5-STEP EVALUATION PROTOCOL:
 
         {bom_data_str}
 
-        CRITICAL HIERARCHICAL NOMENCLATURE PARSING PROCESS:
-        For every MPN, analyze its structure in order:
-        1. Base Family Identification (e.g., UA741, MAX7219, TLE2426, STM32F103, ATMEGA328, MC14069).
-        2. Package & Pin Count Suffix Parsing (e.g., 'CN' = PDIP-8 legacy op-amp, 'LP' = TO-92 3-pin, 'D' = SOIC-8, 'PU' = DIP-28, 'J' = Ceramic CDIP).
-        3. RoHS / Lead-Free Suffix Verification (e.g., Maxim '+' suffix, onsemi 'G' suffix).
-        4. Speed / Temperature Grade Suffix Parsing (e.g., '-166AXC' vs '-200AXC').
+        ========================================================================
+        STRICT 5-STEP ANALYSIS PROTOCOL (MUST APPLY TO EVERY SINGLE MPN):
+        ========================================================================
 
-        CRITICAL LIFECYCLE CLASSIFICATION & SUBSTITUTION RULES:
+        STEP 1: BASE FAMILY IDENTIFICATION
+        - Identify core chip family (e.g., LM7805, UA741, MAX7219, TLE2426, STM32F103, ATMEGA328, MC14069, MAX232).
 
-        RULE 1: LEGACY OP-AMPS & DISCONTINUED DIP PACKAGES (NRND / OBSOLETE)
-        - UA741 SERIES (e.g. UA741CN, UA741CP, LM741CN, LM741J):
-          * Legacy 741 op-amps in PDIP-8 ('CN' suffix) or Ceramic DIP ('J' suffix) are NRND or OBSOLETE for new hardware designs due to outdated bipolar technology, high input bias currents, and non-rail-to-rail operation.
-          * Set status to "NRND" or "Obsolete".
-          * Recommend modern pin-compatible or functional alternatives such as LM358N, NE5532, or TL071CP.
-        - OTHER DISCONTINUED PACKAGES & ARCHITECTURES:
-          * Texas Instruments 'LP' / 'LPR' TO-92 packages (e.g., TLE2426CLP) are OBSOLETE. Suggest active SOIC-8 versions (TLE2426CD/CDR) with explicit PCB redesign warning.
-          * Microchip DIP-28 packages (e.g., ATMEGA328-PU) are NRND/EOL. Suggest surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
-          * STMicroelectronics STM32F103 series (e.g., STM32F103C8T6) is NRND. Suggest STM32G071CBT6 or STM32F4.
-          * Non-RoHS variants lacking '+' (MAX7219CNG, MAX232CPE) or 'G' (MC14069UBD) are OBSOLETE. Suggest '+' or 'G' versions.
+        STEP 2: PACKAGE & FORM-FACTOR DECODING
+        - Analyze package suffix code:
+          * 'T' or 'CT' (e.g., LM7805CT, LM317T) = TO-220 3-pin Through-Hole package.
+          * 'LP' or 'LPR' (e.g., TLE2426CLP) = TO-92 3-pin Through-Hole plastic package.
+          * 'PU' or 'P' (e.g., ATMEGA328-PU, NE555P) = DIP Through-Hole package.
+          * 'CN' or 'CP' or 'J' (e.g., UA741CN, LM741J) = Legacy DIP-8 or Ceramic DIP package.
+          * 'D', 'DR', 'BD', 'EWE' = SOIC Surface Mount package.
 
-        RULE 2: GENUINELY ACTIVE COMPONENTS (NO SUBSTITUTION SUGGESTED)
-        - IF AND ONLY IF A COMPONENT IS TRULY ACTIVE IN MODERN MASS PRODUCTION (e.g., NE555P, 6N137M, GRM188R71H104KA93D, MAX7219CNG+, MAX232CPE+, MC14069UBDG, XC7K325T-2FFG90C):
-          * Set "status" to "Active".
+        STEP 3: ROHS & ENVIRONMENTAL COMPLIANCE AUDIT
+        - Verify lead-free / RoHS designations:
+          * Maxim / Analog Devices: Lacking '+' suffix (e.g., MAX7219CNG, MAX232CPE) = Non-RoHS leaded variant.
+          * onsemi / Motorola: Lacking 'G' suffix (e.g., MC14069UBD, MC7805CTG vs MC7805CT) = Non-RoHS leaded variant.
+          * Texas Instruments: Lacking 'NOPB' or non-standard legacy leaded finishes.
+
+        STEP 4: LIFECYCLE DETERMINATION MATRIX
+        - DISCONTINUED / OBSOLETE SUFFIXES:
+          * LM7805CT / LM7805T (Non-G / Non-NOPB legacy TO-220 through-hole variants) = OBSOLETE / NRND. Modern active lead-free versions are MC7805CTG (onsemi) or LM7805CT/NOPB (TI) or surface mount LM7805S / TO-263.
+          * UA741CN / LM741CN / LM741J (Legacy 1960s bipolar op-amps in DIP) = NRND / OBSOLETE.
+          * TLE2426CLP / TLE2426CLPR (TO-92 through-hole package) = OBSOLETE. Active parts are TLE2426CD / TLE2426CDR (SOIC-8).
+          * MAX7219CNG / MAX232CPE (Non-'+' non-RoHS variants) = OBSOLETE / NRND.
+          * MC14069UBD (Non-'G' non-RoHS variants) = OBSOLETE / NRND.
+          * ATMEGA328-PU (DIP-28 through-hole package) = NRND / EOL.
+          * STM32F103C8T6 (Legacy Cortex-M3 line) = NRND.
+
+        STEP 5: SUBSTITUTION POLICY
+        - IF STATUS IS 'Obsolete' OR 'NRND':
+          * Provide exact, active, orderable MPN with proper package/RoHS suffixes (e.g., MC7805CTG or LM7805CT/NOPB for LM7805CT; LM358N or TL071CP for UA741CN; MAX7219CNG+ for MAX7219CNG; TLE2426CD for TLE2426CLP).
+        - IF STATUS IS 'Active' (ONLY for fully active modern parts like MC7805CTG, MAX7219CNG+, NE555P, 6N137M, XC7K325T-2FFG90C):
           * Set "substitute" to "None required (Component is Active)".
           * Set "substitute_mfr" to "N/A".
           * Set "pin_compatible" to "N/A (Component is Active)".
           * Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
           * Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
-          * DO NOT suggest any alternative MPNs for truly Active components!
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "UA741CN",
-            "manufacturer": "Texas Instruments / STMicroelectronics",
-            "status": "NRND",
-            "substitute": "LM358N / TL071CP",
-            "substitute_mfr": "Texas Instruments / STMicroelectronics",
-            "pin_compatible": "Yes (Direct PDIP-8 Drop-in)",
-            "key_differences": "LM358N / TL071CP offer significantly lower power consumption, wider supply voltage range, and superior frequency response compared to the legacy UA741CN architecture.",
+            "mpn": "LM7805CT",
+            "manufacturer": "Texas Instruments / Fairchild",
+            "status": "Obsolete",
+            "substitute": "MC7805CTG / LM7805CT/NOPB",
+            "substitute_mfr": "onsemi / Texas Instruments",
+            "pin_compatible": "Yes (Direct TO-220 Drop-in)",
+            "key_differences": "MC7805CTG and LM7805CT/NOPB provide full Pb-free RoHS compliance in a standard TO-220 3-pin through-hole package, replacing the legacy discontinued non-RoHS LM7805CT.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=LM358N",
-              "mouser": "https://www.mouser.com/c/?q=LM358N",
-              "octopart": "https://octopart.com/search?q=LM358N",
-              "element14": "https://in.element14.com/search?st=LM358N"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=MC7805CTG",
+              "mouser": "https://www.mouser.com/c/?q=MC7805CTG",
+              "octopart": "https://octopart.com/search?q=MC7805CTG",
+              "element14": "https://in.element14.com/search?st=MC7805CTG"
             }},
-            "analysis": "UA741CN is based on legacy 1960s bipolar architecture and is Not Recommended for New Designs (NRND). Transitioning to modern op-amps like the LM358N or TL071CP in PDIP-8 is strongly recommended for new production designs."
+            "analysis": "LM7805CT in legacy non-RoHS TO-220 packaging has been discontinued/phased out by manufacturers. Upgrading to MC7805CTG (onsemi) or LM7805CT/NOPB (TI) ensures direct pin-to-pin compatibility with active RoHS compliance."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -208,7 +217,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. UA741CN, MAX7219CNG, TLE2426CLP, 6N137M, STM32F103C8T6", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. LM7805CT, UA741CN, MAX7219CNG, TLE2426CLP, MC7805CTG", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
