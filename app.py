@@ -39,8 +39,8 @@ st.markdown("""
 if os.path.exists("logo.png"):
     st.image("logo.png", width=500)
 
-st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Enterprise Component Sourcing & Lifecycle Intelligence Engine</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Protect the Trace. Power the Design.</div>', unsafe_allow_html=True)
+
 
 # 2. Sidebar Navigation
 with st.sidebar:
