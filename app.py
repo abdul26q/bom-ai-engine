@@ -8,7 +8,7 @@ import os
 st.set_page_config(
     page_title="Protect the Trace. Power the Design.", 
     layout="wide",
-    page_icon="X",
+    page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
 
