@@ -6,7 +6,7 @@ import os
 
 # 1. Page Configuration & Custom Theme
 st.set_page_config(
-    page_title="TraceGuard AI | Enterprise Component Risk Engine", 
+    page_title="TraceGuard AI | Protect the Trace. Power the Design.", 
     layout="wide",
     page_icon="🛡️",
     initial_sidebar_state="expanded"
@@ -37,7 +37,7 @@ st.markdown("""
 
 # Header Section
 if os.path.exists("logo.png"):
-    st.image("logo.png", width=160)
+    st.image("logo.png", width=200)
 
 st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enterprise Component Sourcing & Lifecycle Intelligence Engine</div>', unsafe_allow_html=True)
@@ -45,7 +45,7 @@ st.markdown('<div class="sub-header">Enterprise Component Sourcing & Lifecycle I
 # 2. Sidebar Navigation
 with st.sidebar:
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=140)
+        st.image("logo.png", width=200)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Active")
     st.info("🔒 Structured MPN Parsing & Resilient CSV Parser: Active")
