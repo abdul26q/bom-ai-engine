@@ -12,8 +12,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Backend Key
-
 
 def get_api_key():
     try:
@@ -50,7 +48,7 @@ with st.sidebar:
         st.image("logo.png", width=140)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Active")
-    st.info("🔒 Structured MPN Parsing & Sourcing Rules: Active")
+    st.info("🔒 Structured MPN Parsing & Resilient CSV Parser: Active")
     st.markdown("---")
     st.caption("• **Active (🟢):** Production-ready. No substitution suggested.")
     st.caption("• **NRND (🟡):** Not Recommended for New Designs. Modern alternative provided.")
@@ -265,84 +263,108 @@ with tab1:
             for item in search_results:
                 render_component_card(item)
 
-# TAB 2: BATCH BOM AUDIT
+# TAB 2: BATCH BOM UPLOAD AUDIT
 with tab2:
-    uploaded_file = st.file_uploader("Upload Bill of Materials (CSV)", type=["csv"], help="Upload CSV containing MPN, Description, or Manufacturer columns.")
+    uploaded_file = st.file_uploader(
+        "Upload Bill of Materials (CSV)", 
+        type=["csv"], 
+        help="Upload CSV containing MPN, Description, or Manufacturer columns."
+    )
 
     if uploaded_file:
-        bom_df = pd.read_csv(uploaded_file)
+        bom_df = None
+        uploaded_file.seek(0)
+
+        encodings_to_try = ["utf-8", "utf-8-sig", "latin1", "cp1252"]
         
-        with st.expander("📄 Raw Uploaded BOM Data Preview", expanded=False):
-            st.dataframe(bom_df, use_container_width=True)
+        for enc in encodings_to_try:
+            try:
+                uploaded_file.seek(0)
+                bom_df = pd.read_csv(uploaded_file, encoding=enc, on_bad_lines="skip")
+                break
+            except Exception:
+                continue
 
-        col_btn_audit, _ = st.columns([1, 3])
-        with col_btn_audit:
-            run_audit = st.button("🚀 Run Full BOM Risk Audit", type="primary", use_container_width=True)
+        if bom_df is None:
+            try:
+                uploaded_file.seek(0)
+                bom_df = pd.read_csv(uploaded_file, engine="python", on_bad_lines="skip")
+            except Exception as e:
+                st.error(f"❌ Could not parse the CSV file. Please ensure it is a valid CSV format. Details: {e}")
 
-        if run_audit:
-            active_key = get_api_key()
+        if bom_df is not None and not bom_df.empty:
+            with st.expander("📄 Raw Uploaded BOM Data Preview", expanded=False):
+                st.dataframe(bom_df, use_container_width=True)
 
-            with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
-                bom_summary = []
-                for _, row in bom_df.iterrows():
-                    mpn = str(
-                        row.get("MPN") or 
-                        row.get("Part Number") or 
-                        row.get("Item Number") or 
-                        row.get("Item") or ""
-                    ).strip()
-                    desc = str(row.get("Description", "")).strip()
-                    mfr = str(row.get("Manufacturer", "")).strip()
-                    bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
+            col_btn_audit, _ = st.columns([1, 3])
+            with col_btn_audit:
+                run_audit = st.button("🚀 Run Full BOM Risk Audit", type="primary", use_container_width=True)
 
-                bom_data_str = "\n".join(bom_summary)
-                results = analyze_components_with_groq(bom_data_str, active_key)
+            if run_audit:
+                active_key = get_api_key()
 
-            st.markdown("---")
+                with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
+                    bom_summary = []
+                    for _, row in bom_df.iterrows():
+                        mpn = str(
+                            row.get("MPN") or 
+                            row.get("Part Number") or 
+                            row.get("Item Number") or 
+                            row.get("Item") or ""
+                        ).strip()
+                        desc = str(row.get("Description", "")).strip()
+                        mfr = str(row.get("Manufacturer", "")).strip()
+                        if mpn:
+                            bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
 
-            if results:
-                total_parts = len(results)
-                nrnd_count = sum(1 for x in results if "NRND" in str(x.get("status", "")).upper())
-                obsolete_count = sum(1 for x in results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
-                active_count = total_parts - (nrnd_count + obsolete_count)
-                
-                risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
-
-                # Executive KPI Cards
-                st.subheader("📊 Executive Risk Overview")
-                
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Total Line Items", total_parts)
-                m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
-                m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
-                m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
+                    bom_data_str = "\n".join(bom_summary)
+                    results = analyze_components_with_groq(bom_data_str, active_key)
 
                 st.markdown("---")
-                st.subheader("🔍 Component Comparison & Substitute Matrix")
 
-                export_rows = []
+                if results:
+                    total_parts = len(results)
+                    nrnd_count = sum(1 for x in results if "NRND" in str(x.get("status", "")).upper())
+                    obsolete_count = sum(1 for x in results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
+                    active_count = total_parts - (nrnd_count + obsolete_count)
+                    
+                    risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
 
-                for item in results:
-                    render_component_card(item)
+                    # Executive KPI Cards
+                    st.subheader("📊 Executive Risk Overview")
+                    
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Total Line Items", total_parts)
+                    m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
+                    m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
+                    m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
 
-                    export_rows.append({
-                        "Original MPN": str(item.get("mpn", "")),
-                        "Current Status": str(item.get("status", "")),
-                        "Recommended Substitute": str(item.get("substitute", "")),
-                        "Pin Compatible": str(item.get("pin_compatible", "")),
-                        "Key Differences": str(item.get("key_differences", "")),
-                        "Engineering Analysis": str(item.get("analysis", ""))
-                    })
+                    st.markdown("---")
+                    st.subheader("🔍 Component Comparison & Substitute Matrix")
 
-                # CSV Download Section
-                st.markdown("---")
-                export_df = pd.DataFrame(export_rows)
-                csv_data = export_df.to_csv(index=False).encode('utf-8')
+                    export_rows = []
 
-                st.download_button(
-                    label="📥 Export Audited Risk Report (CSV)",
-                    data=csv_data,
-                    file_name="TraceGuard_BOM_Risk_Report.csv",
-                    mime="text/csv",
-                    type="primary"
-                )
+                    for item in results:
+                        render_component_card(item)
+
+                        export_rows.append({
+                            "Original MPN": str(item.get("mpn", "")),
+                            "Current Status": str(item.get("status", "")),
+                            "Recommended Substitute": str(item.get("substitute", "")),
+                            "Pin Compatible": str(item.get("pin_compatible", "")),
+                            "Key Differences": str(item.get("key_differences", "")),
+                            "Engineering Analysis": str(item.get("analysis", ""))
+                        })
+
+                    # CSV Download Section
+                    st.markdown("---")
+                    export_df = pd.DataFrame(export_rows)
+                    csv_data = export_df.to_csv(index=False).encode('utf-8')
+
+                    st.download_button(
+                        label="📥 Export Audited Risk Report (CSV)",
+                        data=csv_data,
+                        file_name="TraceGuard_BOM_Risk_Report.csv",
+                        mime="text/csv",
+                        type="primary"
+                    )
