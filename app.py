@@ -13,7 +13,6 @@ st.set_page_config(
 )
 
 
-
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
@@ -68,49 +67,51 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         CRITICAL HIERARCHICAL NOMENCLATURE PARSING PROCESS:
         For every MPN, analyze its structure in order:
-        1. Base Family Identification (e.g., MAX7219, TLE2426, STM32F103, ATMEGA328, MC14069).
-        2. Package & Pin Count Suffix Parsing (e.g., 'LP' = TO-92 3-pin, 'D' = SOIC-8, 'PU' = DIP-28, 'J' = Ceramic CDIP).
+        1. Base Family Identification (e.g., UA741, MAX7219, TLE2426, STM32F103, ATMEGA328, MC14069).
+        2. Package & Pin Count Suffix Parsing (e.g., 'CN' = PDIP-8 legacy op-amp, 'LP' = TO-92 3-pin, 'D' = SOIC-8, 'PU' = DIP-28, 'J' = Ceramic CDIP).
         3. RoHS / Lead-Free Suffix Verification (e.g., Maxim '+' suffix, onsemi 'G' suffix).
         4. Speed / Temperature Grade Suffix Parsing (e.g., '-166AXC' vs '-200AXC').
 
         CRITICAL LIFECYCLE CLASSIFICATION & SUBSTITUTION RULES:
 
-        RULE 1: ACTIVE COMPONENTS (NO SUBSTITUTION ALLOWED)
-        - IF A COMPONENT IS ACTIVE (e.g., NE555P, 6N137M, GRM188R71H104KA93D, MAX7219CNG+, MAX232CPE+, MC14069UBDG, XC7K325T-2FFG90C):
+        RULE 1: LEGACY OP-AMPS & DISCONTINUED DIP PACKAGES (NRND / OBSOLETE)
+        - UA741 SERIES (e.g. UA741CN, UA741CP, LM741CN, LM741J):
+          * Legacy 741 op-amps in PDIP-8 ('CN' suffix) or Ceramic DIP ('J' suffix) are NRND or OBSOLETE for new hardware designs due to outdated bipolar technology, high input bias currents, and non-rail-to-rail operation.
+          * Set status to "NRND" or "Obsolete".
+          * Recommend modern pin-compatible or functional alternatives such as LM358N, NE5532, or TL071CP.
+        - OTHER DISCONTINUED PACKAGES & ARCHITECTURES:
+          * Texas Instruments 'LP' / 'LPR' TO-92 packages (e.g., TLE2426CLP) are OBSOLETE. Suggest active SOIC-8 versions (TLE2426CD/CDR) with explicit PCB redesign warning.
+          * Microchip DIP-28 packages (e.g., ATMEGA328-PU) are NRND/EOL. Suggest surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
+          * STMicroelectronics STM32F103 series (e.g., STM32F103C8T6) is NRND. Suggest STM32G071CBT6 or STM32F4.
+          * Non-RoHS variants lacking '+' (MAX7219CNG, MAX232CPE) or 'G' (MC14069UBD) are OBSOLETE. Suggest '+' or 'G' versions.
+
+        RULE 2: GENUINELY ACTIVE COMPONENTS (NO SUBSTITUTION SUGGESTED)
+        - IF AND ONLY IF A COMPONENT IS TRULY ACTIVE IN MODERN MASS PRODUCTION (e.g., NE555P, 6N137M, GRM188R71H104KA93D, MAX7219CNG+, MAX232CPE+, MC14069UBDG, XC7K325T-2FFG90C):
           * Set "status" to "Active".
           * Set "substitute" to "None required (Component is Active)".
           * Set "substitute_mfr" to "N/A".
           * Set "pin_compatible" to "N/A (Component is Active)".
           * Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
           * Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
-          * DO NOT suggest any alternative MPNs for Active components!
-
-        RULE 2: OBSOLETE OR NRND COMPONENTS (MANDATORY ACTIVE ALTERNATIVES)
-        - NON-RoHS / LEADED VARIANTS:
-          * Maxim/Analog Devices parts lacking '+' (e.g., MAX7219CNG, MAX232CPE) are OBSOLETE/NRND. Suggest the '+' version (e.g., MAX7219CNG+).
-          * onsemi parts lacking 'G' (e.g., MC14069UBD) are OBSOLETE/NRND. Suggest the 'G' version (e.g., MC14069UBDG).
-        - DISCONTINUED PACKAGES & ARCHITECTURES:
-          * Texas Instruments 'LP' / 'LPR' TO-92 packages (e.g., TLE2426CLP) are OBSOLETE. Suggest active SOIC-8 versions (TLE2426CD/CDR) with explicit PCB redesign warning.
-          * Microchip DIP-28 packages (e.g., ATMEGA328-PU) are NRND/EOL. Suggest surface-mount TQFP-32 (ATMEGA328P-AU) or ATmega328PB.
-          * STMicroelectronics STM32F103 series (e.g., STM32F103C8T6) is NRND. Suggest STM32G071CBT6 or STM32F4.
+          * DO NOT suggest any alternative MPNs for truly Active components!
 
         Respond STRICTLY in valid raw JSON array format as a list of objects like this:
         [
           {{
-            "mpn": "MAX7219CNG",
-            "manufacturer": "Maxim Integrated / Analog Devices",
-            "status": "Obsolete",
-            "substitute": "MAX7219CNG+",
-            "substitute_mfr": "Analog Devices",
-            "pin_compatible": "Yes (Direct PDIP-24 Drop-in)",
-            "key_differences": "MAX7219CNG+ is the active lead-free (RoHS-compliant) direct drop-in replacement for the discontinued non-RoHS MAX7219CNG.",
+            "mpn": "UA741CN",
+            "manufacturer": "Texas Instruments / STMicroelectronics",
+            "status": "NRND",
+            "substitute": "LM358N / TL071CP",
+            "substitute_mfr": "Texas Instruments / STMicroelectronics",
+            "pin_compatible": "Yes (Direct PDIP-8 Drop-in)",
+            "key_differences": "LM358N / TL071CP offer significantly lower power consumption, wider supply voltage range, and superior frequency response compared to the legacy UA741CN architecture.",
             "supplier_links": {{
-              "digikey": "https://www.digikey.com/en/products/result?keywords=MAX7219CNG%2B",
-              "mouser": "https://www.mouser.com/c/?q=MAX7219CNG%2B",
-              "octopart": "https://octopart.com/search?q=MAX7219CNG%2B",
-              "element14": "https://in.element14.com/search?st=MAX7219CNG%2B"
+              "digikey": "https://www.digikey.com/en/products/result?keywords=LM358N",
+              "mouser": "https://www.mouser.com/c/?q=LM358N",
+              "octopart": "https://octopart.com/search?q=LM358N",
+              "element14": "https://in.element14.com/search?st=LM358N"
             }},
-            "analysis": "MAX7219CNG is obsolete due to non-RoHS leaded packaging. The RoHS-compliant MAX7219CNG+ is active, production-ready, and pin-to-pin compatible."
+            "analysis": "UA741CN is based on legacy 1960s bipolar architecture and is Not Recommended for New Designs (NRND). Transitioning to modern op-amps like the LM358N or TL071CP in PDIP-8 is strongly recommended for new production designs."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -207,7 +208,7 @@ with tab1:
     
     col_input, col_btn_search = st.columns([3, 1])
     with col_input:
-        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. MAX7219CNG, TLE2426CLP, 6N137M, STM32F103C8T6", label_visibility="collapsed")
+        search_mpn = st.text_input("Enter Manufacturer Part Number (MPN):", placeholder="e.g. UA741CN, MAX7219CNG, TLE2426CLP, 6N137M, STM32F103C8T6", label_visibility="collapsed")
     with col_btn_search:
         btn_search = st.button("🔎 Search Substitute", type="primary", use_container_width=True)
 
