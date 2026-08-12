@@ -3,28 +3,23 @@ import pandas as pd
 from groq import Groq
 import json
 import os
-import re
 
-# ==========================================
-# 1. Page Configuration & API Setup
-# ==========================================
+# 1. Page Configuration & Custom Theme
 st.set_page_config(
-    page_title="TraceGuard AI - Protect the Trace. Power the Design.", 
+    page_title="Protect the Trace. Power the Design.", 
     layout="wide",
     page_icon="🛡️",
     initial_sidebar_state="expanded"
 )
 
-# Hardcode fallback API key or set via environment variable / secrets.toml
-BACKEND_GROQ_KEY = "your-groq-api-key-here"
 
 def get_api_key():
     try:
         return st.secrets["GROQ_API_KEY"]
     except Exception:
-        return os.environ.get("GROQ_API_KEY", BACKEND_GROQ_KEY)
+        return BACKEND_GROQ_KEY
 
-# Custom CSS Styling
+# Custom Styling
 st.markdown("""
 <style>
     [data-testid="stMetricValue"] { font-size: 30px !important; font-weight: 800 !important; }
@@ -45,11 +40,9 @@ if os.path.exists("logo.png"):
     st.image("logo.png", width=500)
 
 st.markdown('<div class="main-header">Protect the Trace. Power the Design.</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Automated Component Lifecycle Risk Auditing & Multi-Distributor Sourcing Engine</div>', unsafe_allow_html=True)
 
-# ==========================================
+
 # 2. Sidebar Navigation
-# ==========================================
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", width=500)
@@ -61,9 +54,7 @@ with st.sidebar:
     st.caption("• **NRND (🟡):** Not Recommended for New Designs. Modern alternative provided.")
     st.caption("• **Obsolete/EOL (🔴):** Discontinued. Active drop-in provided.")
 
-# ==========================================
-# 3. Master Groq AI Core Engine
-# ==========================================
+# 3. Combined Master Groq AI Core Engine
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
@@ -171,28 +162,22 @@ def analyze_components_with_groq(bom_data_str, api_key):
             temperature=0.0
         )
         
-        raw_text = response.choices[0].message.content.strip()
+        text = response.choices[0].message.content.strip()
         
-        # 1. Strip Markdown Code Fences
-        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.MULTILINE)
-        raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
-        raw_text = raw_text.strip()
-
-        # 2. Extract strictly the JSON array [] portion using Regex
-        array_match = re.search(r"\[\s*\{.*\}\s*\]", raw_text, re.DOTALL)
-        if array_match:
-            raw_text = array_match.group(0)
-
-        # 3. Clean up trailing commas before array/object closures
-        raw_text = re.sub(r",\s*([\]}])", r"\1", raw_text)
-
-        return json.loads(raw_text)
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        return json.loads(text.strip())
         
     except Exception as e:
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# Helper Function to Render Result Card UI
+# Helper Function to Render Result Card
 def render_component_card(item):
     status = str(item.get("status", "Active"))
     mpn = str(item.get("mpn", "Unknown"))
@@ -252,9 +237,7 @@ def render_component_card(item):
         st.markdown("**Distributor Verification Links:**")
         st.markdown(f"[📦 DigiKey]({digikey_url}) &nbsp;|&nbsp; [🏬 Mouser Electronics]({mouser_url}) &nbsp;|&nbsp; [🔍 Octopart Aggregator]({octopart_url}) &nbsp;|&nbsp; [🌐 Element14 / Farnell]({element14_url})")
 
-# ==========================================
 # 4. Interface Tabs
-# ==========================================
 tab1, tab2 = st.tabs(["🔍 Instant Part Search", "📁 Batch BOM Upload Audit"])
 
 # TAB 1: INSTANT SEARCH
@@ -334,15 +317,8 @@ with tab2:
                         if mpn:
                             bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
 
-                    # Chunking into 10-item batches to prevent JSON response truncation
-                    chunk_size = 10
-                    results = []
-                    for i in range(0, len(bom_summary), chunk_size):
-                        chunk = bom_summary[i:i + chunk_size]
-                        bom_data_str = "\n".join(chunk)
-                        chunk_results = analyze_components_with_groq(bom_data_str, active_key)
-                        if chunk_results and isinstance(chunk_results, list):
-                            results.extend(chunk_results)
+                    bom_data_str = "\n".join(bom_summary)
+                    results = analyze_components_with_groq(bom_data_str, active_key)
 
                 st.markdown("---")
 
