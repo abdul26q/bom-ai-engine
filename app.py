@@ -68,16 +68,35 @@ with st.sidebar:
     )
 
 
-# 3. Combined Master Groq AI Core Engine
+# 3. Combined Master Groq AI Core Engine (With Resilient Chunked Batch Processing)
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
 
-        prompt = f"""
+        lines = [
+            line.strip()
+            for line in bom_data_str.strip().split("\n")
+            if line.strip()
+        ]
+        if not lines:
+            return []
+
+        # Process components in batches of 5 to prevent model output token truncation
+        chunk_size = 5
+        chunks = [
+            lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)
+        ]
+
+        all_results = []
+
+        for chunk in chunks:
+            chunk_data_str = "\n".join(chunk)
+
+            prompt = f"""
         You are an expert Hardware Component Sourcing and Lifecycle Intelligence AI, Component Quality Manager, and Product Change Notification (PCN) Audit Specialist.
         Your task is to analyze Manufacturer Part Numbers (MPNs) submitted in a Bill of Materials (BOM), evaluate their current lifecycle status, find optimal alternative components when necessary, and analyze pinout and architectural compatibility.
 
-        {bom_data_str}
+        {chunk_data_str}
 
         ====================================================================================================
         0. MANDATORY STRUCTURED MPN PARSING PROTOCOL (PREVENT MIDWAY HALLUCINATIONS)
@@ -170,29 +189,37 @@ def analyze_components_with_groq(bom_data_str, api_key):
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
         """
 
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-        )
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=4096,
+            )
 
-        text = response.choices[0].message.content.strip()
+            text = response.choices[0].message.content.strip()
 
-        match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
-        if match:
-            text = match.group(0)
-        else:
-            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
-            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+            match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
+            if match:
+                text = match.group(0)
+            else:
+                text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+                text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
 
-        text = re.sub(r",\s*([\]}])", r"\1", text)
+            text = re.sub(r",\s*([\]}])", r"\1", text)
 
-        try:
-            return json.loads(text.strip())
-        except json.JSONDecodeError:
-            import ast
+            try:
+                parsed = json.loads(text.strip())
+            except json.JSONDecodeError:
+                import ast
 
-            return ast.literal_eval(text.strip())
+                parsed = ast.literal_eval(text.strip())
+
+            if isinstance(parsed, list):
+                all_results.extend(parsed)
+            elif isinstance(parsed, dict):
+                all_results.append(parsed)
+
+        return all_results
 
     except Exception as e:
         st.error(f"Analysis Error: {str(e)}")
