@@ -1,12 +1,13 @@
 import json
 import os
 import re
+import time
 import pandas as pd
 import streamlit as st
 from groq import Groq
 
 # -----------------------------------------------------------------------------
-# 1. Page Configuration & Custom Theme
+# 1. Page Configuration & Custom Styling
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="TraceGuard AI | Enterprise Component Risk Engine",
@@ -27,7 +28,6 @@ def get_api_key():
     st.error("🔑 Groq API Key missing! Add `GROQ_API_KEY` to `.streamlit/secrets.toml` or set it as an environment variable.")
     st.stop()
 
-# Custom Styling
 st.markdown("""
 <style>
     [data-testid="stMetricValue"] { font-size: 30px !important; font-weight: 800 !important; }
@@ -43,7 +43,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Header Section
+# Header
 if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
@@ -65,7 +65,7 @@ with st.sidebar:
     st.caption("• **Obsolete/EOL (🔴):** Discontinued. Active drop-in provided.")
 
 # -----------------------------------------------------------------------------
-# 3. Groq AI Analysis Engine
+# 3. AI Core Engine Functions
 # -----------------------------------------------------------------------------
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
@@ -78,73 +78,31 @@ def analyze_components_with_groq(bom_data_str, api_key):
         {bom_data_str}
 
         ====================================================================================================
-        0. MANDATORY STRUCTURED MPN PARSING PROTOCOL (PREVENT MIDWAY HALLUCINATIONS)
+        0. MANDATORY STRUCTURED MPN PARSING PROTOCOL
         ====================================================================================================
-        Before making any lifecycle or substitution decision, you MUST mentally deconstruct each MPN in a strict 4-step sequence:
-        - STEP 1 (BASE PREFIX): Extract the exact base family (e.g., 'MAX232', 'FT232R', 'LM7805', 'UA741', 'TLE2426', 'MPU-6050', 'L298').
-        - STEP 2 (PACKAGE SUFFIX): Decode physical form factor (e.g., 'N'/'P'/'PU' = PDIP, 'D'/'DR'/'EWE' = SOIC, 'LP'/'LPR' = TO-92, 'T'/'CT' = TO-220, 'REEL'/'R' = Tape & Reel packaging format).
-        - STEP 3 (ENVIRONMENTAL SUFFIX): Check for active RoHS/Lead-Free indicators (e.g., Maxim '+', onsemi 'G', TI 'NOPB'). Missing compliance indicators on legacy parts automatically flag high supply chain risk.
-        - STEP 4 (CHANNEL & ARCHITECTURE SPEC): Count channels (Single vs Dual vs Quad) and underlying technology (BJT Darlington vs MOSFET, Bipolar vs CMOS). Never hallucinate package or channel conversions midway through parsing.
+        Before making any lifecycle or substitution decision, mentally deconstruct each MPN in a strict sequence:
+        - STEP 1 (BASE PREFIX): Extract exact base family (e.g., 'MAX232', 'FT232R', 'LM7805', 'UA741', 'TLE2426').
+        - STEP 2 (PACKAGE SUFFIX): Decode physical form factor (e.g., 'N'/'P'/'PU' = PDIP, 'D'/'DR' = SOIC, 'T'/'CT' = TO-220).
+        - STEP 3 (ENVIRONMENTAL SUFFIX): Check RoHS/Lead-Free indicators (Maxim '+', onsemi 'G', TI 'NOPB').
+        - STEP 4 (CHANNEL & ARCHITECTURE): Count channels (Single vs Dual vs Quad) and technology (BJT vs MOSFET, Bipolar vs CMOS).
 
         ====================================================================================================
         1. PERMITTED LIFECYCLE STATUSES
         ====================================================================================================
         Classify each component into strictly one of these three categories:
-        - Active: Mass production; full lifecycle availability. No alternative required unless requested.
-        - NRND (Not Recommended for New Designs): Available for legacy builds/repairs, but nearing phase-out or superseded by newer architecture. Flag a warning and recommend a modern alternative.
-        - Obsolete: Discontinued by the manufacturer. High supply chain risk; a drop-in or redesign alternative is mandatory.
+        - Active: Mass production; full lifecycle availability.
+        - NRND (Not Recommended for New Designs): Available for legacy builds, but nearing phase-out. Recommend modern alternative.
+        - Obsolete: Discontinued by manufacturer. Active drop-in or redesign alternative is mandatory.
 
         ====================================================================================================
         2. REPLACEMENT SOURCING & ARCHITECTURAL RULES
         ====================================================================================================
-        - PRESERVE ARCHITECTURE & CHANNEL COUNT:
-          * Never cross-reference a single-channel component with a multi-channel variant without matching pinouts/channel specs.
-          * For example, do NOT substitute a single op-amp (e.g., LM301AH or UA741CN) with a dual op-amp (e.g., LM358N) unless explicitly warning that it is a multi-channel architecture shift requiring PCB redesign. Prefer single-channel active drop-ins (e.g., TL071CP or NE5534).
-        - PRIORITIZE DIRECT DROP-IN REPLACEMENTS:
-          * If a direct drop-in alternative exists with the same package footprint (e.g., upgrading a non-RoHS leaded part like MAX232CPE to its lead-free variant MAX232CPE+, or MC14069UBD to MC14069UBDG), prioritize it and set pinout compatibility to "Yes (Direct drop-in replacement)".
-          * Only recommend package transitions (e.g., DIP to SOIC/QFN, or TO-92 to SOIC-8) if through-hole parts are entirely obsolete or unavailable, and explicitly flag the package change.
-        - PINOUT COMPATIBILITY CHECK:
-          * Explicitly state whether the alternative requires a PCB layout redesign or allows a direct drop-in replacement.
+        - PRESERVE ARCHITECTURE & CHANNEL COUNT: Never replace single-channel with multi-channel without warning.
+        - PRIORITIZE DIRECT DROP-IN REPLACEMENTS: Prefer lead-free package equivalents (e.g., MAX232CPE to MAX232CPE+).
+        - PINOUT COMPATIBILITY CHECK: Explicitly state whether layout redesign is required.
 
         ====================================================================================================
-        3. UNIVERSAL FIRST-PRINCIPLES HARDWARE TAXONOMY
-        ====================================================================================================
-        STAGE 1: USB-TO-SERIAL BRIDGES & INTERFACE ICS
-        - FTDI FT232R / FT232RL / FT232RL-REEL -> NRND. Recommend FT230X series or Silicon Labs CP2102N.
-        - Prolific PL2303 / PL2303HX -> Obsolete/NRND. Recommend CP2102N or FT230X.
-
-        STAGE 2: LEGACY POWER DRIVERS & REGULATORS
-        - L298N / L293D / L298P (Darlington BJT drivers with 2-3V thermal losses) -> NRND/Obsolete. Recommend modern MOSFET drivers: Toshiba TB6612FNG or TI DRV8833.
-        - LM7805CT / LM7805T / LM317T (Non-G / Non-NOPB legacy TO-220) -> Obsolete/NRND. Recommend onsemi MC7805CTG or TI LM7805CT/NOPB.
-
-        STAGE 3: MEMS & MOTION TRACKING SENSORS
-        - InvenSense/TDK MPU-6050, MPU-6000, MPU-6500, MPU-9250 -> Obsolete/EOL. Recommend TDK ICM-42688-P or Bosch BMI270.
-
-        STAGE 4: OP-AMPS & ANALOG FRONT-ENDS
-        - UA741 / LM741 / UA741CN / LM741J -> NRND/Obsolete. Recommend single-channel active equivalents like TL071CP or NE5534 (preserve single-channel architecture).
-        - TLE2426CLP / TLE2426CLPR -> Obsolete (TO-92 through-hole package discontinued). Recommend TLE2426CD / TLE2426CDR in SOIC-8.
-
-        STAGE 5: ROHS & ENVIRONMENTAL COMPLIANCE
-        - Maxim / Analog Devices parts without '+' (MAX7219CNG, MAX232CPE) -> Obsolete/NRND. Recommend '+' version (MAX7219CNG+).
-        - onsemi parts without 'G' (MC14069UBD) -> Obsolete/NRND. Recommend 'G' version (MC14069UBDG).
-
-        ====================================================================================================
-        4. STRICT SUBSTITUTION OUTPUT POLICY
-        ====================================================================================================
-        - IF COMPONENT IS 'Obsolete' OR 'NRND':
-          1. Set "status" to "Obsolete" or "NRND".
-          2. Provide explicit, orderable active substitute MPN in "substitute".
-          3. Detail technical differences, pinout compatibility, or efficiency gains in "key_differences" and "analysis".
-        - IF AND ONLY IF COMPONENT IS TRULY 'Active':
-          1. Set "status" to "Active".
-          2. Set "substitute" to "None required (Component is Active)".
-          3. Set "substitute_mfr" to "N/A".
-          4. Set "pin_compatible" to "N/A (Component is Active)".
-          5. Set "key_differences" to "No replacement required. The component is active, in mass production, and fully safe for design use."
-          6. Set "analysis" to "Component is Active and fully supported by manufacturer. No replacement or substitution is necessary."
-
-        ====================================================================================================
-        5. REQUIRED OUTPUT JSON SCHEMA
+        3. STRICT OUTPUT POLICY & JSON SCHEMA
         ====================================================================================================
         Respond STRICTLY in valid raw JSON array format matching this exact schema:
         [
@@ -155,14 +113,14 @@ def analyze_components_with_groq(bom_data_str, api_key):
             "substitute": "MAX232CPE+",
             "substitute_mfr": "Analog Devices",
             "pin_compatible": "Yes (Direct drop-in replacement)",
-            "key_differences": "MAX232CPE+ is the lead-free (RoHS-compliant) direct drop-in replacement for the discontinued non-RoHS MAX232CPE in PDIP-16 package.",
+            "key_differences": "MAX232CPE+ is the lead-free (RoHS-compliant) direct drop-in replacement.",
             "supplier_links": {{
               "digikey": "https://www.digikey.com/en/products/result?keywords=MAX232CPE%2B",
               "mouser": "https://www.mouser.com/c/?q=MAX232CPE%2B",
               "octopart": "https://octopart.com/search?q=MAX232CPE%2B",
               "element14": "https://in.element14.com/search?st=MAX232CPE%2B"
             }},
-            "analysis": "MAX232CPE is obsolete due to non-RoHS leaded packaging. The RoHS-compliant MAX232CPE+ is active, production-ready, and a direct drop-in replacement."
+            "analysis": "MAX232CPE is obsolete due to non-RoHS leaded packaging. MAX232CPE+ is active and a direct drop-in replacement."
           }}
         ]
         Do not wrap in triple backticks or write conversational text. Output pure JSON only.
@@ -176,7 +134,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         text = response.choices[0].message.content.strip()
 
-        # Clean markdown code blocks
+        # Clean markdown code wrapper formatting
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -186,20 +144,18 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         text = text.strip()
 
-        # Robust JSON extraction fallback
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group(0))
-            raise ValueError("Failed to parse structured JSON response from AI engine.")
+            raise ValueError("Failed to parse valid JSON from AI engine response.")
 
     except Exception as e:
         st.error(f"Analysis Error: {str(e)}")
         return None
 
-# Helper Function to Render Result Card
 def render_component_card(item):
     status = str(item.get("status", "Active"))
     mpn = str(item.get("mpn", "Unknown"))
@@ -287,17 +243,15 @@ with tab1:
             for item in search_results:
                 render_component_card(item)
 
-# TAB 2: BATCH BOM AUDIT
+# TAB 2: BATCH BOM AUDIT (HANDLES 100+ ITEMS VIA CHUNKING)
 with tab2:
     uploaded_file = st.file_uploader("Upload Bill of Materials (CSV)", type=["csv"], help="Upload CSV containing MPN, Description, or Manufacturer columns.")
 
     if uploaded_file:
         bom_df = pd.read_csv(uploaded_file)
-
-        # Case-insensitive column matching
         col_map = {str(col).strip().lower(): col for col in bom_df.columns}
 
-        with st.expander("📄 Raw Uploaded BOM Data Preview", expanded=False):
+        with st.expander(f"📄 Raw Uploaded BOM Data Preview ({len(bom_df)} Total Rows)", expanded=False):
             st.dataframe(bom_df, use_container_width=True)
 
         col_btn_audit, _ = st.columns([1, 3])
@@ -307,74 +261,95 @@ with tab2:
         if run_audit:
             active_key = get_api_key()
 
-            with st.spinner("🤖 TraceGuard AI analyzing component lifecycles & cross-referencing drop-in substitutes..."):
-                bom_summary = []
-                for _, row in bom_df.iterrows():
-                    # Flexible column detection
-                    mpn = str(
-                        row.get(col_map.get("mpn", "")) or
-                        row.get(col_map.get("part number", "")) or
-                        row.get(col_map.get("item number", "")) or
-                        row.get(col_map.get("item", "")) or ""
-                    ).strip()
+            bom_summary = []
+            for _, row in bom_df.iterrows():
+                mpn = str(
+                    row.get(col_map.get("mpn", "")) or
+                    row.get(col_map.get("part number", "")) or
+                    row.get(col_map.get("item number", "")) or
+                    row.get(col_map.get("item", "")) or ""
+                ).strip()
 
-                    desc = str(row.get(col_map.get("description", ""), "")).strip()
-                    mfr = str(row.get(col_map.get("manufacturer", ""), "")).strip()
+                desc = str(row.get(col_map.get("description", ""), "")).strip()
+                mfr = str(row.get(col_map.get("manufacturer", ""), "")).strip()
 
-                    if mpn:
-                        bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
+                if mpn and mpn.lower() != "nan":
+                    bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
 
-                if not bom_summary:
-                    st.warning("No valid MPNs found in the uploaded file. Please ensure your CSV has an 'MPN' or 'Part Number' column.")
-                else:
-                    bom_data_str = "\n".join(bom_summary)
-                    results = analyze_components_with_groq(bom_data_str, active_key)
+            if not bom_summary:
+                st.error("❌ No valid MPNs found in CSV! Ensure columns like 'MPN' or 'Part Number' exist.")
+            else:
+                total_items = len(bom_summary)
+                CHUNK_SIZE = 15  # Optimal batch size to stay within Groq TPM limits
+                bom_chunks = [bom_summary[i:i + CHUNK_SIZE] for i in range(0, total_items, CHUNK_SIZE)]
+                total_chunks = len(bom_chunks)
+
+                st.info(f"📦 Processing **{total_items} items** across **{total_chunks} batch requests** (15 parts/batch) to maintain optimal speed and API stability...")
+
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                all_results = []
+
+                for idx, chunk in enumerate(bom_chunks):
+                    status_text.text(f"⏳ Auditing Batch {idx + 1} of {total_chunks} ({len(chunk)} parts)...")
+                    
+                    bom_data_str = "\n".join(chunk)
+                    chunk_results = analyze_components_with_groq(bom_data_str, active_key)
+
+                    if chunk_results and isinstance(chunk_results, list):
+                        all_results.extend(chunk_results)
+                    else:
+                        st.warning(f"⚠️ Batch {idx + 1} returned incomplete results. Continuing processing.")
+
+                    progress_bar.progress((idx + 1) / total_chunks)
+
+                    # Pause briefly between batches to prevent rate limit spikes
+                    if idx < total_chunks - 1:
+                        time.sleep(1.0)
+
+                status_text.success("✅ Complete BOM Risk Audit Finished!")
+
+                st.markdown("---")
+                if all_results:
+                    total_parts = len(all_results)
+                    nrnd_count = sum(1 for x in all_results if "NRND" in str(x.get("status", "")).upper())
+                    obsolete_count = sum(1 for x in all_results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
+                    active_count = total_parts - (nrnd_count + obsolete_count)
+
+                    risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
+
+                    # Executive KPI Summary
+                    st.subheader("📊 Executive Risk Overview")
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Total Line Items Audited", total_parts)
+                    m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
+                    m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
+                    m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
 
                     st.markdown("---")
+                    st.subheader("🔍 Component Comparison & Substitute Matrix")
 
-                    if results:
-                        total_parts = len(results)
-                        nrnd_count = sum(1 for x in results if "NRND" in str(x.get("status", "")).upper())
-                        obsolete_count = sum(1 for x in results if any(term in str(x.get("status", "")).upper() for term in ["OBSOLETE", "EOL"]))
-                        active_count = total_parts - (nrnd_count + obsolete_count)
+                    export_rows = []
+                    for item in all_results:
+                        render_component_card(item)
 
-                        risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
+                        export_rows.append({
+                            "Original MPN": str(item.get("mpn", "")),
+                            "Current Status": str(item.get("status", "")),
+                            "Recommended Substitute": str(item.get("substitute", "")),
+                            "Pin Compatible": str(item.get("pin_compatible", "")),
+                            "Key Differences": str(item.get("key_differences", "")),
+                            "Engineering Analysis": str(item.get("analysis", ""))
+                        })
 
-                        # Executive KPI Cards
-                        st.subheader("📊 Executive Risk Overview")
+                    st.markdown("---")
+                    export_df = pd.DataFrame(export_rows)
+                    csv_data = export_df.to_csv(index=False).encode('utf-8')
 
-                        m1, m2, m3, m4 = st.columns(4)
-                        m1.metric("Total Line Items", total_parts)
-                        m2.metric("Active Components", active_count, delta="Mass Production Ready", delta_color="normal")
-                        m3.metric("At-Risk Items", nrnd_count + obsolete_count, delta=f"{obsolete_count} EOL | {nrnd_count} NRND", delta_color="inverse")
-                        m4.metric("BOM Risk Index", f"{risk_index}%", delta="Critical Action Needed" if risk_index > 15 else "Low Risk", delta_color="inverse")
-
-                        st.markdown("---")
-                        st.subheader("🔍 Component Comparison & Substitute Matrix")
-
-                        export_rows = []
-
-                        for item in results:
-                            render_component_card(item)
-
-                            export_rows.append({
-                                "Original MPN": str(item.get("mpn", "")),
-                                "Current Status": str(item.get("status", "")),
-                                "Recommended Substitute": str(item.get("substitute", "")),
-                                "Pin Compatible": str(item.get("pin_compatible", "")),
-                                "Key Differences": str(item.get("key_differences", "")),
-                                "Engineering Analysis": str(item.get("analysis", ""))
-                            })
-
-                        # CSV Download Section
-                        st.markdown("---")
-                        export_df = pd.DataFrame(export_rows)
-                        csv_data = export_df.to_csv(index=False).encode('utf-8')
-
-                        st.download_button(
-                            label="📥 Export Audited Risk Report (CSV)",
-                            data=csv_data,
-                            file_name="TraceGuard_BOM_Risk_Report.csv",
-                            mime="text/csv",
-                            type="primary"
-                        )
+                    st.download_button(
+                        label=f"📥 Export Full Audited Risk Report ({len(export_df)} Items CSV)",
+                        data=csv_data,
+                        file_name="TraceGuard_Full_BOM_Risk_Report.csv",
+                        mime="text/csv",
+                        type="primary"
+                    )
