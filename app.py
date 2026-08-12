@@ -75,28 +75,16 @@ def analyze_components_with_gemini(bom_data_str, api_key):
     try:
         genai.configure(api_key=api_key)
 
-        model_names = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash-latest",
-            "gemini-1.5-flash",
-        ]
-        model = None
-
-        for name in model_names:
-            try:
-                model = genai.GenerativeModel(
-                    model_name=name,
-                    generation_config={
-                        "response_mime_type": "application/json"
-                    },
-                )
-                break
-            except Exception:
-                continue
-
-        if not model:
-            st.error("Could not initialize any supported Gemini model.")
-            return None
+        try:
+            model = genai.GenerativeModel(
+                model_name="gemini-2.5-flash",
+                generation_config={"response_mime_type": "application/json"},
+            )
+        except Exception:
+            model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                generation_config={"response_mime_type": "application/json"},
+            )
 
         prompt = f"""
         You are an expert Hardware Component Sourcing and Lifecycle Intelligence AI, Component Quality Manager, and Product Change Notification (PCN) Audit Specialist.
