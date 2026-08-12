@@ -46,17 +46,17 @@ st.markdown("""
 
 # Header Section
 if os.path.exists("logo.png"):
-    st.image("logo.png", width=160)
+    st.image("logo.png", width=400)
 
-st.markdown('<div class="main-header">TraceGuard</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Enterprise Component Sourcing & Lifecycle Intelligence Engine</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Protect the Trace. Power the Design.</div>', unsafe_allow_html=True)
+
 
 # -----------------------------------------------------------------------------
 # 2. Sidebar Navigation
 # -----------------------------------------------------------------------------
 with st.sidebar:
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=140)
+        st.image("logo.png", width=400)
     st.title("System Status")
     st.success("⚡ TraceGuard AI Core: Active")
     st.info("🔒 Structured MPN Parsing & Sourcing Rules: Active")
