@@ -149,8 +149,14 @@ def analyze_components_with_gemini(bom_data_str, api_key):
         """
 
         response = client.chat.completions.create(
-            model="google/gemini-2.0-flash-001",
-            messages=[{"role": "user", "content": prompt}],
+            model="google/gemini-2.0-flash-01",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a specialized BOM analysis assistant. Output all response content strictly as a valid JSON array.",
+                },
+                {"role": "user", "content": prompt},
+            ],
             response_format={"type": "json_object"},
         )
 
