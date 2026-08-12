@@ -7,7 +7,7 @@ import streamlit as st
 from groq import Groq
 
 # -----------------------------------------------------------------------------
-# 1. Page Configuration & Custom Styling
+# 1. Page Configuration & Custom Theme
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="TraceGuard AI | Enterprise Component Risk Engine",
@@ -28,6 +28,7 @@ def get_api_key():
     st.error("🔑 Groq API Key missing! Add `GROQ_API_KEY` to `.streamlit/secrets.toml` or set it as an environment variable.")
     st.stop()
 
+# Custom Styling
 st.markdown("""
 <style>
     [data-testid="stMetricValue"] { font-size: 30px !important; font-weight: 800 !important; }
@@ -43,7 +44,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Header
+# Header Section
 if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
@@ -65,7 +66,7 @@ with st.sidebar:
     st.caption("• **Obsolete/EOL (🔴):** Discontinued. Active drop-in provided.")
 
 # -----------------------------------------------------------------------------
-# 3. AI Core Engine Functions
+# 3. AI Engine Core Functions
 # -----------------------------------------------------------------------------
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
@@ -81,8 +82,8 @@ def analyze_components_with_groq(bom_data_str, api_key):
         0. MANDATORY STRUCTURED MPN PARSING PROTOCOL
         ====================================================================================================
         Before making any lifecycle or substitution decision, mentally deconstruct each MPN in a strict sequence:
-        - STEP 1 (BASE PREFIX): Extract exact base family (e.g., 'MAX232', 'FT232R', 'LM7805', 'UA741', 'TLE2426').
-        - STEP 2 (PACKAGE SUFFIX): Decode physical form factor (e.g., 'N'/'P'/'PU' = PDIP, 'D'/'DR' = SOIC, 'T'/'CT' = TO-220).
+        - STEP 1 (BASE PREFIX): Extract exact base family (e.g., 'MAX232', 'FT232R', 'LM7805', 'UA741', 'TLE2426', 'MPU-6050').
+        - STEP 2 (PACKAGE SUFFIX): Decode physical form factor (e.g., 'N'/'P'/'PU' = PDIP, 'D'/'DR' = SOIC, 'T'/'CT' = TO-220, 'GQFN' = QFN).
         - STEP 3 (ENVIRONMENTAL SUFFIX): Check RoHS/Lead-Free indicators (Maxim '+', onsemi 'G', TI 'NOPB').
         - STEP 4 (CHANNEL & ARCHITECTURE): Count channels (Single vs Dual vs Quad) and technology (BJT vs MOSFET, Bipolar vs CMOS).
 
@@ -134,7 +135,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
 
         text = response.choices[0].message.content.strip()
 
-        # Clean markdown code wrapper formatting
+        # Clean markdown code wrappers
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -150,7 +151,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
             json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group(0))
-            raise ValueError("Failed to parse valid JSON from AI engine response.")
+            raise ValueError("Failed to parse valid JSON from AI response.")
 
     except Exception as e:
         st.error(f"Analysis Error: {str(e)}")
@@ -243,12 +244,28 @@ with tab1:
             for item in search_results:
                 render_component_card(item)
 
-# TAB 2: BATCH BOM AUDIT (HANDLES 100+ ITEMS VIA CHUNKING)
+# TAB 2: BATCH BOM AUDIT (HANDLES 100+ ITEMS SAFELY WITH PARSER FALLBACKS)
 with tab2:
-    uploaded_file = st.file_uploader("Upload Bill of Materials (CSV)", type=["csv"], help="Upload CSV containing MPN, Description, or Manufacturer columns.")
+    uploaded_file = st.file_uploader("Upload Bill of Materials (CSV/XLSX)", type=["csv", "xlsx", "xls"], help="Upload CSV or Excel containing MPN, Description, or Manufacturer columns.")
 
     if uploaded_file:
-        bom_df = pd.read_csv(uploaded_file)
+        bom_df = None
+        
+        # Multi-engine fallback parser to prevent pandas ParserError
+        try:
+            bom_df = pd.read_csv(uploaded_file)
+        except Exception:
+            try:
+                uploaded_file.seek(0)
+                bom_df = pd.read_csv(uploaded_file, sep=None, engine="python", on_bad_lines="skip")
+            except Exception:
+                try:
+                    uploaded_file.seek(0)
+                    bom_df = pd.read_excel(uploaded_file)
+                except Exception as parse_err:
+                    st.error(f"❌ Unable to parse file structure: {str(parse_err)}. Ensure file is valid CSV/XLSX.")
+                    st.stop()
+
         col_map = {str(col).strip().lower(): col for col in bom_df.columns}
 
         with st.expander(f"📄 Raw Uploaded BOM Data Preview ({len(bom_df)} Total Rows)", expanded=False):
@@ -277,14 +294,14 @@ with tab2:
                     bom_summary.append(f"MPN: {mpn} | Manufacturer: {mfr} | Description: {desc}")
 
             if not bom_summary:
-                st.error("❌ No valid MPNs found in CSV! Ensure columns like 'MPN' or 'Part Number' exist.")
+                st.error("❌ No valid MPNs detected! Ensure columns like 'MPN' or 'Part Number' exist in your file.")
             else:
                 total_items = len(bom_summary)
                 CHUNK_SIZE = 15  # Optimal batch size to stay within Groq TPM limits
                 bom_chunks = [bom_summary[i:i + CHUNK_SIZE] for i in range(0, total_items, CHUNK_SIZE)]
                 total_chunks = len(bom_chunks)
 
-                st.info(f"📦 Processing **{total_items} items** across **{total_chunks} batch requests** (15 parts/batch) to maintain optimal speed and API stability...")
+                st.info(f"📦 Processing **{total_items} items** across **{total_chunks} batch requests** (15 parts/batch) to maintain speed and API stability...")
 
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -299,11 +316,11 @@ with tab2:
                     if chunk_results and isinstance(chunk_results, list):
                         all_results.extend(chunk_results)
                     else:
-                        st.warning(f"⚠️ Batch {idx + 1} returned incomplete results. Continuing processing.")
+                        st.warning(f"⚠️ Batch {idx + 1} returned incomplete results. Continuing processing remaining items.")
 
                     progress_bar.progress((idx + 1) / total_chunks)
 
-                    # Pause briefly between batches to prevent rate limit spikes
+                    # 1.0 second pause between requests prevents rate limit spikes
                     if idx < total_chunks - 1:
                         time.sleep(1.0)
 
@@ -318,7 +335,7 @@ with tab2:
 
                     risk_index = round(((obsolete_count * 1.0 + nrnd_count * 0.5) / max(total_parts, 1)) * 100, 1)
 
-                    # Executive KPI Summary
+                    # Executive KPI Summary Dashboard
                     st.subheader("📊 Executive Risk Overview")
                     m1, m2, m3, m4 = st.columns(4)
                     m1.metric("Total Line Items Audited", total_parts)
