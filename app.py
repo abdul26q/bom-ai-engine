@@ -68,7 +68,7 @@ with st.sidebar:
     )
 
 
-# 3. Combined Master Groq AI Core Engine (With Resilient Chunked Batch Processing)
+# 3. Combined Master Groq AI Core Engine
 def analyze_components_with_groq(bom_data_str, api_key):
     try:
         client = Groq(api_key=api_key)
@@ -81,7 +81,6 @@ def analyze_components_with_groq(bom_data_str, api_key):
         if not lines:
             return []
 
-        # Process components in batches of 5 to prevent model output token truncation
         chunk_size = 5
         chunks = [
             lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)
@@ -190,7 +189,7 @@ def analyze_components_with_groq(bom_data_str, api_key):
         """
 
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 max_tokens=4096,
