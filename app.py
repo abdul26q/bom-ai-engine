@@ -1,6 +1,8 @@
 import json
 import os
 import re
+from google import genai
+from google.genai import types
 import pandas as pd
 import streamlit as st
 
@@ -67,9 +69,11 @@ with st.sidebar:
   )
 
 
-# 3. Master Gemini AI Core Engine (Dual SDK Resilient Driver)
+# 3. Master Gemini AI Core Engine (google-genai SDK Option A)
 def analyze_components_with_gemini(bom_data_str, api_key):
   try:
+    client = genai.Client(api_key=api_key)
+
     prompt = f"""
         You are an expert Hardware Component Sourcing and Lifecycle Intelligence AI, Component Quality Manager, and Product Change Notification (PCN) Audit Specialist.
         Your task is to analyze Manufacturer Part Numbers (MPNs) submitted in a Bill of Materials (BOM), evaluate their current lifecycle status, find optimal alternative components when necessary, and analyze pinout and architectural compatibility.
@@ -138,30 +142,15 @@ def analyze_components_with_gemini(bom_data_str, api_key):
         ]
         """
 
-    text = ""
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+        ),
+    )
 
-    # Primary Driver: New google.genai SDK
-    try:
-      from google import genai
-
-      client = genai.Client(api_key=api_key)
-      response = client.models.generate_content(
-          model="gemini-1.5-flash",
-          contents=prompt,
-          config={"response_mime_type": "application/json"},
-      )
-      text = response.text.strip()
-    except Exception:
-      # Legacy Fallback Driver: google.generativeai SDK
-      import google.generativeai as legacy_genai
-
-      legacy_genai.configure(api_key=api_key)
-      model = legacy_genai.GenerativeModel(
-          model_name="gemini-1.5-flash",
-          generation_config={"response_mime_type": "application/json"},
-      )
-      response = model.generate_content(prompt)
-      text = response.text.strip()
+    text = response.text.strip()
 
     match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
     if match:
