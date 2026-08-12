@@ -69,7 +69,7 @@ with st.sidebar:
   )
 
 
-# 3. Master Gemini AI Core Engine (google-genai SDK Option A)
+# 3. Master Gemini AI Core Engine
 def analyze_components_with_gemini(bom_data_str, api_key):
   try:
     client = genai.Client(api_key=api_key)
@@ -143,7 +143,7 @@ def analyze_components_with_gemini(bom_data_str, api_key):
         """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
