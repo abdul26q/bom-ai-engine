@@ -48,7 +48,7 @@ st.markdown("""
 if os.path.exists("logo.png"):
     st.image("logo.png", width=160)
 
-st.markdown('<div class="main-header">TraceGuard AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">TraceGuard</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Enterprise Component Sourcing & Lifecycle Intelligence Engine</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
